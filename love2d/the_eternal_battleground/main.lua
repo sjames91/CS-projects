@@ -11,7 +11,7 @@ function love.load()
     for i = 1,3 do
         table.insert(grid_1load, i*64)
     end
-    for i = 21, 24 do
+    for i = 22, 24 do
         table.insert(grid_2load, i *64)
     end
     for i = 1, 24 do
