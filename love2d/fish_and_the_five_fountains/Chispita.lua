@@ -1,0 +1,13 @@
+Chispita = {}
+
+local Chispita_sprite = require("Chispita_sprite")
+local sprites = Chispita_sprite.sprites
+
+Chispita.addRect = Chispita_sprite.addRect
+Chispita.addCircle = Chispita_sprite.addCircle
+
+function Chispita.draw()
+    for i, sprite in ipairs(sprites) do
+        sprite.draw(sprite)
+    end
+end

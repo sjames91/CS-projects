@@ -49,20 +49,22 @@ end
 
 function love.draw()
     --draw_stage
-    love.graphics.rectangle("fill", x, y, 64, 64)
+    
     for i, grid_y in ipairs(grid_2play) do
         for i, grid_x in ipairs(grid_1load) do
+            love.graphics.setColor(1,0,0)
             love.graphics.rectangle("fill", offset_x + grid_x, offset_y + grid_y, 64, 64)
         end
         for i, grid_x in ipairs(grid_2load) do
+            love.graphics.setColor(0,1,0)
             love.graphics.rectangle("fill", offset_x + grid_x, offset_y + grid_y, 64, 64)
         end
         for i, grid_x in ipairs(grid_1play) do
+            love.graphics.setColor(0,0,1)
             love.graphics.rectangle("line", offset_x + grid_x, offset_y + grid_y, 64, 64)
         end
     end
-
+    love.graphics.circle("fill", x, y, 16, 16)
     --draw_players
 end
-
 
