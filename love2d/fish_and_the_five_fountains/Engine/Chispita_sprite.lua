@@ -22,9 +22,17 @@ function gravity(dt)
         if sprite.physics == true and sprite.fall == true then
             sprite.vy = sprite.vy + Gravity *dt
             sprite.y = sprite.y + sprite.vy
+            sprite.x = sprite.x + sprite.vx
         end
     end
 end
+
+function draw_sprites()
+    for i, sprite in ipairs(sprites) do
+        sprite.draw(sprite)
+    end
+end
+
 
 function Chispita_sprite.addRect(x, y, width, height,physics)
     local rect = setmetatable({}, Chispita_sprite)
