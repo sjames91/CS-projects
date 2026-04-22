@@ -15,13 +15,23 @@ Chispita_sprite.solid = true
 Chispita_sprite.bounciness = 0
 Chispita_sprite.hit_box = false
 Chispita_sprite.hurt_box = false
-Chispita_sprite.fill = "fill"
+
+
+function gravity(dt)
+    for i, sprite in ipairs(sprites) do
+        if sprite.physics == true and sprite.fall == true then
+            sprite.vy = sprite.vy + Gravity *dt
+            sprite.y = sprite.y + sprite.vy
+        end
+    end
+end
 
 function Chispita_sprite.addRect(x, y, width, height,physics)
     local rect = setmetatable({}, Chispita_sprite)
     rect.physics = physics or true
     rect.x = x
     rect.y = y 
+
     rect.width = width
     rect.height = height
     rect.hit_height = height
@@ -29,6 +39,7 @@ function Chispita_sprite.addRect(x, y, width, height,physics)
     rect.hurt_box_shape = "rect"
     rect.hurt_box_width = width
     rect.hurt_box_height = height
+    rect.fill = "fill"
 
     if rect.physics == false then
         rect.fall = false
@@ -54,6 +65,7 @@ function Chispita_sprite.addCircle(x, y, radius, physics)
     circle.hit_box_radius = radius
     circle.hurt_box_shape = "circle"
     circle.hurt_box_radius = radius
+    circle.fill = "fill"
 
     if circle.physics == false then
         circle.fall = false

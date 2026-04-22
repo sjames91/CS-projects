@@ -1,21 +1,17 @@
 
 require("Chispita")
-X = 500
-Y = 500
+
 local circle
+local rect
 
 
 function love.load()
-    Chispita.addRect(X, Y, 128, 128, true)
-    circle = Chispita.addCircle(800,800,128, false)
-end
+    rect = Chispita.addRect(500, -200, 128, 128, true)
+    circle = Chispita.addCircle(800,200,128,false)
+end 
 
 function love.update(dt)
-    if love.keyboard.isDown("space") then
-        circle.fill = "line"
-    else
-        circle.fill = "fill"
-    end
+    Chispita.update(dt)
 end
 
 function love.draw()
