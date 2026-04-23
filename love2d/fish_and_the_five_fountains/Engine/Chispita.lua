@@ -1,6 +1,7 @@
 Chispita = {}
 Gravity = 5
 local Chispita_sprite = require("Engine/Chispita_sprite")
+local Chispita_collision = require("Engine/Chispita_collision")
 local sprites = Chispita_sprite.sprites
 
 Chispita.addRect = Chispita_sprite.addRect
@@ -14,6 +15,7 @@ end
 
 function Chispita.update(dt)
     gravity(dt)
+    Chispita_collision.checkCollisions()
 end
 
 
