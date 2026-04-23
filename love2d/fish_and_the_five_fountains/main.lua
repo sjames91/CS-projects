@@ -5,8 +5,8 @@ local rect
 
 function love.load()
     rect1 = Chispita.addRect(800, -5, 128, 128, true)
-        rect1.fall = false
-        rect1.bounciness = 800
+        rect1.fall = true
+        rect1.bounciness = .3
 
     rect2 = Chispita.addRect(800,500,256,64,true)
         rect2.fall = false
@@ -14,6 +14,7 @@ function love.load()
 end
 
 function love.update(dt)
+    print(rect1.grounded)
     Chispita.update(dt)
 
   if love.keyboard.isDown("w") then rect1.vy = -5 end

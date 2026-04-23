@@ -15,16 +15,22 @@ Chispita_sprite.solid = true
 Chispita_sprite.bounciness = 1
 Chispita_sprite.hit_box = false
 Chispita_sprite.hurt_box = false
+Chispita_sprite.friction = 1
 
 
 function gravity(dt)
     for i, sprite in ipairs(sprites) do
         if sprite.physics == true then 
+            sprite.grounded = false
+        end
             sprite.y = sprite.y + sprite.vy
             sprite.x = sprite.x + sprite.vx
-            if sprite.fall == true then
-            sprite.vy = sprite.vy + Gravity *dt
-            end
+        if sprite.fall == true and Mode == "platformer" then
+                sprite.vy = sprite.vy + Gravity *dt
+        end
+            if Mode == "topdown" then
+                sprite.vx = sprite.vx * (Friction * sprite.friction)
+                sprite.vy = sprite.vy * (Friction * sprite.friction)
         end
     end
 end

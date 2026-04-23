@@ -15,8 +15,10 @@ Chispita_collision.checkCollision_rect_rect = function(s1, s2)
         local dx = math.min(s1.x + s1.width, s2.x + s2.width) - math.max(s1.x, s2.x)
         local dy = math.min(s1.y + s1.height, s2.y + s2.height) - math.max(s1.y, s2.y)
         if dx < dy then
+            local dir = s1.x < s2.x and -1 or 1
             return dir, dx, 0
         else
+            local dir = s1.y < s2.y and -1 or 1
             return dir, 0, dy
         end
     else
@@ -48,7 +50,7 @@ function Chispita_collision.checkCollisions()
             if s1.physics and s2.physics then
                 if s1.hit_box_shape == "rect" and s2.hit_box_shape == "rect" then
                         local dir, dx, dy = Chispita_collision.checkCollision_rect_rect(s1, s2)
-                    if dx ~= nil and dx ~= false then
+                    if dir ~= nil and dir ~= false then
 
                         if s1.trigger and s1.callback then
                             s1.callback(s1,s2)
@@ -58,40 +60,31 @@ function Chispita_collision.checkCollisions()
                         end
 
                         if not s1.fixed and s1.solid then
-                            if s1.x < s2.x then           
-                                s1.x = s1.x - dx
-                                vx = dx*s1.bounciness
+                            if dx ~= 0 then           
+                                s1.x = s1.x + dir * dx
+                                s1.vx = -s1.vx * (s1.bounciness*s2.bounciness)
                             else
-                                s1.x = s1.x + dx
-                                vx = dx*s1.bounciness
+                                s1.y = s1.y + dir * dy
+                                s1.vy = -s1.vy * (s1.bounciness*s2.bounciness)
+                                if dir == -1 then 
+                                    s1.grounded = true
+                                end
                             end
-
-                            if s1.y < s2.y then
-                                s1.y = s1.y - dy
-                                vy = dy*s1.bounciness
-                            else
-                                s1.y = s1.y + dy
-                                vy = dy*s1.bounciness
-                            end
-
                         end
                         
                         if not s2.fixed and s2.solid then
 
-                            if s2.x < s1.x then           
-                                s2.x = s2.x - dx * s2.bounciness
+                            if dx ~= 0 then
+                                s2.x = s2.x - dir * dx
+                                s2.vx = -s2.vx * (s1.bounciness*s2.bounciness)
                             else
-                                s2.x = s2.x + dx * s2.bounciness
-                            end
-
-                            if s2.y < s1.y then
-                                s2.y = s2.y - dy * s2.bounciness
-                            else
-                                s2.y = s2.y + dy * s2.bounciness
+                                s2.y = s2.y - dir * dy
+                                s2.vy = -s2.vy * (s1.bounciness*s2.bounciness)
+                                if dir == -1 then 
+                                    s2.grounded = true
+                                end
                             end
                         end
-                    else 
-                        return nil
                     end
 
                 elseif s1.hit_box_shape == "circle" and s2.hit_box_shape == "circle" then

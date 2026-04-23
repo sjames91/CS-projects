@@ -1,5 +1,8 @@
 Chispita = {}
 Gravity = 5
+Mode = "platformer"
+Friction = .6
+
 local Chispita_sprite = require("Engine/Chispita_sprite")
 local Chispita_collision = require("Engine/Chispita_collision")
 local sprites = Chispita_sprite.sprites
