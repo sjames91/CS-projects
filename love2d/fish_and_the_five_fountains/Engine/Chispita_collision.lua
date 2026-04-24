@@ -86,7 +86,6 @@ function Chispita_collision.checkCollisions()
                             end
                         end
                     end
-
                 elseif s1.hit_box_shape == "circle" and s2.hit_box_shape == "circle" then
                         Chispita_collision.checkCollision_circle_circle(s1, s2)
                 elseif (s1.hit_box_shape == "rect" and s2.hit_box_shape == "circle") or (s1.hit_box_shape == "circle" and s2.hit_box_shape == "rect") then
