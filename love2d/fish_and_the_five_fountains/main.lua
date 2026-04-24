@@ -6,11 +6,12 @@ local rect
 function love.load()
     rect1 = Chispita.addRect(800, -5, 128, 128, true)
         rect1.fall = true
-        rect1.bounciness = .3
+        rect1.bounciness = .8
 
     rect2 = Chispita.addRect(800,500,256,64,true)
         rect2.fall = false
-
+        rect2.fixed = true
+        rect2.friction = 8
 end
 
 function love.update(dt)

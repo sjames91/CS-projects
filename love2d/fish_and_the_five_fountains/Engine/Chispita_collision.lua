@@ -68,6 +68,11 @@ function Chispita_collision.checkCollisions()
                                 s1.vy = -s1.vy * (s1.bounciness*s2.bounciness)
                                 if dir == -1 then 
                                     s1.grounded = true
+                                    if s1.vy <1 and s1.grounded then
+                                        if math.abs(s1.vy) < .5 then
+                                        s1.vy = 0
+                                        end
+                                    end
                                 end
                             end
                         end
@@ -80,8 +85,13 @@ function Chispita_collision.checkCollisions()
                             else
                                 s2.y = s2.y - dir * dy
                                 s2.vy = -s2.vy * (s1.bounciness*s2.bounciness)
-                                if dir == -1 then 
+                                if dir == 1 then 
                                     s2.grounded = true
+                                    if s2.vy <1 and s2.grounded then
+                                        if math.abs(s2.vy) < .5 then
+                                                s2.vy = 0
+                                        end
+                                    end       
                                 end
                             end
                         end
@@ -95,12 +105,12 @@ function Chispita_collision.checkCollisions()
                 elseif (s1.hit_box_shape == "rect" and s2.hit_box_shape == "pillbox") or (s1.hit_box_shape == "pillbox" and s2.hit_box_shape == "rect") then
                         Chispita_collision.checkCollision_rect_pillbox(s1, s2)
                 elseif (s1.hit_box_shape == "circle" and s2.hit_box_shape == "pillbox") or (s1.hit_box_shape == "pillbox" and s2.hit_box_shape == "circle") then
-                        Chispita_collision.checkCollision_circle_pillbox(s1, s2)
+                       Chispita_collision.checkCollision_circle_pillbox(s1, s2)
                 end
             end
-         end 
-    end 
-end
+        end
+    end
+end 
 return Chispita_collision
 
 
