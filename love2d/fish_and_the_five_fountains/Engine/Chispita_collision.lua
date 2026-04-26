@@ -47,7 +47,7 @@ function Chispita_collision.checkCollisions()
         for j = i + 1, #sprites do
             local s1 = sprites[i]
             local s2 = sprites[j]
-            if s1.physics and s2.physics then
+            if (s1.physics and s2.physics) and (s1.active and s2.active) then
                 if s1.hit_box_shape == "rect" and s2.hit_box_shape == "rect" then
                         local dir, dx, dy = Chispita_collision.checkCollision_rect_rect(s1, s2)
                     if dir ~= nil and dir ~= false then

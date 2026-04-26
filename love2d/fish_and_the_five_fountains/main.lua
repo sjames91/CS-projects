@@ -1,17 +1,21 @@
 require("Engine/Chispita")
 local circle
 local rect
+Mode = "platformer"
+Debug_mode = true
+
 
 
 function love.load()
     rect1 = Chispita.addRect(800, -5, 128, 128, true)
         rect1.fall = true
-        rect1.bounciness = .8
 
-    rect2 = Chispita.addRect(800,500,256,64,true)
+
+    rect2 = Chispita.addRect(800,800,1900,64,true)
         rect2.fall = false
         rect2.fixed = true
-        rect2.friction = 8
+        rect2.friction = 1
+    Chispita.setTarget(rect1)
 end
 
 function love.update(dt)
@@ -27,6 +31,13 @@ function love.update(dt)
   if love.keyboard.isDown("down") then rect2.vy = 5 end
   if love.keyboard.isDown("left") then rect2.vx = -5 end
   if love.keyboard.isDown("right") then rect2.vx = 5 end
+end
+
+function love.keypressed(key) 
+    if key == "q" then
+        Debug_mode = not Debug_mode
+        love.graphics.setColor(1,1,1,1)
+    end
 end
 
 function love.draw()

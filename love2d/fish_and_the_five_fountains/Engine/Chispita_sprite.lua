@@ -3,12 +3,11 @@ local Chispita_sprite = {}
 Chispita_sprite.__index = Chispita_sprite
 Chispita_sprite.sprites = {}
 local sprites = Chispita_sprite.sprites
-
 Chispita_sprite.vx = 0
 Chispita_sprite.vy = 0
 Chispita_sprite.physics = true
-Chispita_sprite.display = true
 Chispita_sprite.active = true
+Chispita_sprite.visable = true
 Chispita_sprite.fall = true
 Chispita_sprite.fixed = false
 Chispita_sprite.solid = true
@@ -16,33 +15,73 @@ Chispita_sprite.bounciness = .3
 Chispita_sprite.hit_box = false
 Chispita_sprite.hurt_box = false
 Chispita_sprite.friction = 1
+Chispita_sprite.air_friction = 1
 
 
-function gravity(dt)
+function Gravity_pre(dt)
     for i, sprite in ipairs(sprites) do
-        if sprite.physics == true then 
-            sprite.grounded = false
-        end
-            sprite.y = sprite.y + sprite.vy
-            sprite.x = sprite.x + sprite.vx
-        if sprite.fall == true and Mode == "platformer" then
-                sprite.vy = sprite.vy + Gravity *dt
-        end
-        if sprite.grounded == true and Mode == "platformer" then
-            sprite.vx = sprite.vx * (Friction * sprite.friction)
-            sprite.vy = sprite.vy * (Friction * sprite.friction)
-        end
-            if Mode == "topdown" then
-                sprite.vx = sprite.vx * (Friction * sprite.friction)
-                sprite.vy = sprite.vy * (Friction * sprite.friction)
+        if sprite.active then
+            if sprite.physics == true then 
+                sprite.grounded = false
+                sprite.y = sprite.y + sprite.vy
+                sprite.x = sprite.x + sprite.vx
+                if sprite.fall == true and Mode == "platformer" then
+                    sprite.vy = sprite.vy + Gravity *dt
+                end
+            end
+        end    
+    end
+end
+
+function Gravity_post(dt)
+    for i, sprite in ipairs(sprites) do
+        if sprite.active then
+            if sprite.physics == true then
+                if Mode == "platformer" then
+                    if sprite.grounded == true then
+                        sprite.vx = sprite.vx * (Friction * sprite.friction)
+                    else
+                        sprite.vx = sprite.vx * (Air_friction * sprite.air_friction)
+                    end       
+                elseif Mode == "topdown" then
+                    sprite.vx = sprite.vx * (Friction * sprite.friction)
+                    sprite.vy = sprite.vy * (Friction * sprite.friction)
+                end
+            end
         end
     end
 end
 
-function draw_sprites()
-    for i, sprite in ipairs(sprites) do
-        sprite.draw(sprite)
+function Draw_grid()
+    love.graphics.setLineWidth(4)
+    love.graphics.setColor(.3,.3,.3,1)
+    local grid_size = 64
+    local startx = math.floor(Camera.x / grid_size) * grid_size
+    local starty = math.floor(Camera.y / grid_size) * grid_size
+    local endx = Camera.x + love.graphics.getWidth()
+    local endy = Camera.y + love.graphics.getHeight()
+    for x = startx, endx, grid_size do
+        love.graphics.line(x, starty, x, endy)
     end
+    for y = starty, endy, grid_size do
+        love.graphics.line(startx, y, endx, y)
+    end
+    love.graphics.setColor(1,1,1,1)
+
+end
+
+function draw_sprites()
+  love.graphics.push()
+  love.graphics.translate(-math.floor(Camera.x),-math.floor(Camera.y))
+  if Debug_mode then
+    Draw_grid()
+  end
+  for i, sprite in ipairs(sprites) do
+    if sprite.visable then 
+      sprite.draw(sprite)
+    end
+  end
+  love.graphics.pop()
 end
 
 
