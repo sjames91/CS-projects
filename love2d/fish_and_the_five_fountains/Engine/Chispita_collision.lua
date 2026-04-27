@@ -26,7 +26,18 @@ Chispita_collision.checkCollision_rect_rect = function(s1, s2)
     end
 end
 
-Chispita_collision.checkCollision_circle_circle = function()
+Chispita_collision.checkCollision_circle_circle = function(s1, s2)
+    local dx = s2.x - s1.x
+    local dy = s2.y - s1.y
+    local distance = math.sqrt(dx*dx + dy*dy)
+    if distance < s1.radius + s2.radius then
+        local nx = dx / distance
+        local ny = dy / distance
+        local overlap = s1.radius +s2.radius - distance + .1
+        return overlap, nx, ny
+    else
+        return false
+    end
 end
 
 Chispita_collision.checkCollision_rect_circle = function()
@@ -48,8 +59,8 @@ function Chispita_collision.checkCollisions()
             local s1 = sprites[i]
             local s2 = sprites[j]
             if (s1.physics and s2.physics) and (s1.active and s2.active) then
-                if s1.hit_box_shape == "rect" and s2.hit_box_shape == "rect" then
-                        local dir, dx, dy = Chispita_collision.checkCollision_rect_rect(s1, s2)
+                if s1.hit_box_shape == "rect" and s2.hit_box_shape == "rect" then    
+                    local dir, dx, dy = Chispita_collision.checkCollision_rect_rect(s1, s2)
                     if dir ~= nil and dir ~= false then
 
                         if s1.trigger and s1.callback then
@@ -96,8 +107,49 @@ function Chispita_collision.checkCollisions()
                             end
                         end
                     end
+                
+
                 elseif s1.hit_box_shape == "circle" and s2.hit_box_shape == "circle" then
-                        Chispita_collision.checkCollision_circle_circle(s1, s2)
+                    local overlap, nx, ny = Chispita_collision.checkCollision_circle_circle(s1, s2)
+                    if nx ~= nil and nx ~= false then
+                        if s1.trigger and s1.callback then
+                            s1.callback(s1,s2)
+                        end
+                        if s2.trigger and s2.callback then
+                            s2.callback(s2,s1)   
+                        end
+
+                        if not s1.fixed and s1.solid then          
+                        s1.x = s1.x - nx * overlap
+                        s1.vx = -s1.vx * (s1.bounciness*s2.bounciness)
+                        s1.y = s1.y - ny * overlap
+                        s1.vy = -s1.vy * (s1.bounciness*s2.bounciness)
+                        if ny < -.9 then 
+                            s1.grounded = true
+                            if s1.vy < 1 and s1.grounded then
+                                if math.abs(s1.vy) < .5 then
+                                    s1.vy = 0
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if not s2.fixed and s2.solid then
+                        s2.x = s2.x + nx * overlap
+                        s2.vx = -s2.vx * (s1.bounciness*s2.bounciness)
+                        s2.y = s2.y + ny * overlap
+                        s2.vy = -s2.vy * (s1.bounciness*s2.bounciness)
+                            if ny > .9 then 
+                                s2.grounded = true
+                                if s2.vy <1 and s2.grounded then
+                                    if math.abs(s2.vy) < .5 then
+                                        s2.vy = 0
+                                    end      
+                                end
+                            end
+                        end
+                    end
+
                 elseif (s1.hit_box_shape == "rect" and s2.hit_box_shape == "circle") or (s1.hit_box_shape == "circle" and s2.hit_box_shape == "rect") then
                         Chispita_collision.checkCollision_rect_circle(s1, s2)
                 elseif s1.hit_box_shape == "pillbox" and s2.hit_box_shape == "pillbox" then
