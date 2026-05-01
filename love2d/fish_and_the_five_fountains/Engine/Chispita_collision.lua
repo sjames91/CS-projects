@@ -119,11 +119,15 @@ function Chispita_collision.checkCollisions()
                             s2.callback(s2,s1)   
                         end
 
-                        if not s1.fixed and s1.solid then          
-                        s1.x = s1.x - nx * overlap
-                        s1.vx = -s1.vx * (s1.bounciness*s2.bounciness)
-                        s1.y = s1.y - ny * overlap
-                        s1.vy = -s1.vy * (s1.bounciness*s2.bounciness)
+                        if not s1.fixed and s1.solid then
+                            if math.abs(nx) > math.abs(ny) *.05 then
+                                s1.x = s1.x - nx * overlap
+                                s1.vx = -s1.vx * (s1.bounciness * s2.bounciness)
+                            else
+                                s1.x =  s1.x - nx * overlap
+                                s1.y = s1.y - ny * overlap
+                                s1.vy = -s1.vy * (s1.bounciness * s2.bounciness)      
+                            end
                         if ny < -.9 then 
                             s1.grounded = true
                             if s1.vy < 1 and s1.grounded then
