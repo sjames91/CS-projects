@@ -1,11 +1,7 @@
 require("Engine/Chispita")
-local circle
-local rect
-Mode = "platformer"
+Mode = "topdown"
 Debug_mode = true
-Friction = 1
-
-
+Friction = .95
 function love.load()
     rect1 = Chispita.addCircle(800, -400, 128, true)
         rect1.bounciness = 1
@@ -15,9 +11,8 @@ function love.load()
         rect2.fall = false
         rect2.fixed = true
         rect2.friction = 1
-        rect2.bounciness = 1
+        rect2.bounciness = 30
     Chispita.setTarget(rect1)
-
 end
 
 function love.update(dt)
