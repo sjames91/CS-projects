@@ -31,27 +31,43 @@ Chispita_collision.checkCollision_circle_circle = function(s1, s2)
     local dy = s2.y - s1.y
     local distance = math.sqrt(dx*dx + dy*dy)
     if distance < s1.radius + s2.radius then
-        local nx = dx / distance
-        local ny = dy / distance
-        local overlap = s1.radius +s2.radius - distance + .1
+        local nx, ny
+        if distance <= .001 then
+            nx, ny = 1, 0
+        else
+            nx = dx / distance
+            ny = dy / distance
+        end
+        local overlap = s1.radius +s2.radius - distance + .02
         return overlap, nx, ny
     else
         return false
     end
 end
 
-Chispita_collision.checkCollision_rect_circle = function()
+Chispita_collision.checkCollision_rect_circle = function(s1, s2)
 end
 
-Chispita_collision.checkCollision_pillbox_pillbox = function()
+Chispita_collision.checkCollision_capsule_capsule = function(s1, s2)
 end
 
-Chispita_collision.checkCollision_rect_pillbox = function()
+Chispita_collision.checkCollision_rect_capsule = function(s1, s2)
 end
 
-Chispita_collision.checkCollision_circle_pillbox = function()
+Chispita_collision.checkCollision_circle_capsule = function(s1, s2 )
 end
 
+Chispita_collision.checkCollision_poly_poly = function(s1, s2)
+end
+
+Chispita_collision.checkCollision_poly_rect = function(s1, s2)
+end
+
+Chispita_collision.checkCollision_poly_circle = function(s1, s2)
+end
+
+Chispita_collision.checkCollision_poly_capsule = function(s1, s2)
+end
 
 function Chispita_collision.checkCollisions()
     for i = 1, #sprites do
@@ -112,38 +128,71 @@ function Chispita_collision.checkCollisions()
                 elseif s1.hit_box_shape == "circle" and s2.hit_box_shape == "circle" then
                     local overlap, nx, ny = Chispita_collision.checkCollision_circle_circle(s1, s2)
                     if nx ~= nil and nx ~= false then
+
                         if s1.trigger and s1.callback then
                             s1.callback(s1,s2)
                         end
+
                         if s2.trigger and s2.callback then
                             s2.callback(s2,s1)   
                         end
 
+                        if (not s1.fixed and s1.solid) and (not s2.fixed and s2.solid) then 
+                            overlap = overlap * 0.5
+                        end
+
                         if not s1.fixed and s1.solid then
-                            if math.abs(nx) > math.abs(ny) *.05 then
-                                s1.x = s1.x - nx * overlap
-                                s1.vx = -s1.vx * (s1.bounciness * s2.bounciness)
-                            else
-                                s1.x =  s1.x - nx * overlap
-                                s1.y = s1.y - ny * overlap
-                                s1.vy = -s1.vy * (s1.bounciness * s2.bounciness)      
+                            s1.x =  s1.x - nx * overlap
+                            s1.y = s1.y - ny * overlap
+                        end
+
+                        if not s2.fixed and s2.solid then
+                            s2.x = s2.x + nx * overlap
+                            s2.y = s2.y + ny * overlap
+                        end
+
+                        if s1.solid and s2.solid then
+                            local collisionBounciness = s1.bounciness * s2.bounciness
+                            local relativeVelocityX = s2.vx - s1.vx
+                            local relativeVelocityY = s2.vy - s1.vy
+                            local speedintoNormal = relativeVelocityX * nx + relativeVelocityY * ny
+                            
+                            if speedintoNormal < 0 then 
+                                local moveWeight1 = (not s1.fixed and s1.solid) and 1 or 0
+                                local moveWeight2 = (not s2.fixed and s2.solid) and 1 or 0
+                                local totalWeight = moveWeight1 + moveWeight2
+
+                                if totalWeight > 0 then
+                                    local impulseSize = -(1 + collisionBounciness) * speedintoNormal / totalWeight
+                                    local impulseX = impulseSize * nx
+                                    local impulseY = impulseSize * ny
+
+                                    if moveWeight1 > 0 then
+                                        s1.vx = s1.vx - impulseX * moveWeight1
+                                        s1.vy = s1.vy - impulseY * moveWeight1
+                                    end
+
+                                    if moveWeight2 > 0 then
+                                        s2.vx = s2.vx + impulseX * moveWeight2
+                                        s2.vy = s2.vy + impulseY * moveWeight2
+                                    end
+                                end
                             end
-                        if ny < -.9 then 
-                            s1.grounded = true
-                            if s1.vy < 1 and s1.grounded then
-                                if math.abs(s1.vy) < .5 then
-                                    s1.vy = 0
+                        end
+
+                        if not s1.fixed and s1.solid then 
+                            if ny < -.9 then 
+                                s1.grounded = true
+                                if s1.vy < 1 and s1.grounded then
+                                    if math.abs(s1.vy) < 0.5 then
+                                        s1.vy = 0
                                     end
                                 end
                             end
                         end
                         
                         if not s2.fixed and s2.solid then
-                        s2.x = s2.x + nx * overlap
-                        s2.vx = -s2.vx * (s1.bounciness*s2.bounciness)
-                        s2.y = s2.y + ny * overlap
-                        s2.vy = -s2.vy * (s1.bounciness*s2.bounciness)
-                            if ny > .9 then 
+                            if ny > 0.9 then 
                                 s2.grounded = true
                                 if s2.vy <1 and s2.grounded then
                                     if math.abs(s2.vy) < .5 then
@@ -156,12 +205,12 @@ function Chispita_collision.checkCollisions()
 
                 elseif (s1.hit_box_shape == "rect" and s2.hit_box_shape == "circle") or (s1.hit_box_shape == "circle" and s2.hit_box_shape == "rect") then
                         Chispita_collision.checkCollision_rect_circle(s1, s2)
-                elseif s1.hit_box_shape == "pillbox" and s2.hit_box_shape == "pillbox" then
-                        Chispita_collision.checkCollision_pillbox_pillbox(s1, s2)
-                elseif (s1.hit_box_shape == "rect" and s2.hit_box_shape == "pillbox") or (s1.hit_box_shape == "pillbox" and s2.hit_box_shape == "rect") then
-                        Chispita_collision.checkCollision_rect_pillbox(s1, s2)
-                elseif (s1.hit_box_shape == "circle" and s2.hit_box_shape == "pillbox") or (s1.hit_box_shape == "pillbox" and s2.hit_box_shape == "circle") then
-                       Chispita_collision.checkCollision_circle_pillbox(s1, s2)
+                elseif s1.hit_box_shape == "capsule" and s2.hit_box_shape == "capsule" then
+                        Chispita_collision.checkCollision_capsule_capsule(s1, s2)
+                elseif (s1.hit_box_shape == "rect" and s2.hit_box_shape == "capsule") or (s1.hit_box_shape == "capsule" and s2.hit_box_shape == "rect") then
+                        Chispita_collision.checkCollision_rect_capsule(s1, s2)
+                elseif (s1.hit_box_shape == "circle" and s2.hit_box_shape == "capsule") or (s1.hit_box_shape == "capsule" and s2.hit_box_shape == "circle") then
+                       Chispita_collision.checkCollision_circle_capsule(s1, s2)
                 end
             end
         end
