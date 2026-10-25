@@ -193,8 +193,32 @@ chispita_measure_fps = function()
   end
 end
 
+chispita_depth_key = function(o)
+  if o.hit_box_shape == "circle" then return o.y - o.radius end
+  return o.y - o.height / 2
+end
+
+chispita_sort_depth = function()
+  local list = chispita_drawables
+  for i = 1 to list.length - 1 by 1
+    local o = list[i]
+    if not o.depth_sort then continue end
+    local key = chispita_depth_key(o)
+    local j = i - 1
+    while j >= 0
+      local before = list[j]
+      if not before.depth_sort or before.layer != o.layer then break end
+      if chispita_depth_key(before) >= key then break end
+      list[j + 1] = before
+      j -= 1
+    end
+    list[j + 1] = o
+  end
+end
+
 chispita_draw_all = function()
   chispita_measure_fps()
+  chispita_sort_depth()
   if chispita_background then screen.clear(chispita_background) end
   if chispita_debug_mode and Debug.grid then chispita_debug_draw_grid() end
 

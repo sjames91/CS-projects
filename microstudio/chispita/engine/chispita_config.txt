@@ -7,7 +7,7 @@ chispita_config = function()
   chispita_rest_speed = 30           // slower than this, a landing stops instead of bouncing
 
   // Time
-  chispita_substeps = 1              // raise it if fast sprites pass through walls
+  chispita_substeps = 1              // least physics steps per frame, more are added for fast sprites
   chispita_max_substeps = 8
   chispita_time_scale = 1            // 1 = normal, 0.5 = slow motion, 0 = frozen
 

@@ -339,11 +339,11 @@ Physics
   drag            how much friction slows it down. 1 (default) = normal,
                   0 = no friction at all (keeps its speed forever: bullets,
                   thrown things), 0.5 = half as much slowing down.
-  life            seconds left before it's removed with Chispita_remove.
+  lifetime        seconds left before it's removed with Chispita_remove.
                   0 (default) = lives forever. Counts down on game time, so
                   it pauses and slows down with the game. Good for bullets,
                   sparks and anything temporary:
-                    bullet.life = 2
+                    bullet.lifetime = 2
   grounded        1 if standing on something this frame (read only).
   riding          the kinematic sprite it's standing on, or 0 (read only).
   group           collision group name, default "default" (section 5).
@@ -386,6 +386,12 @@ Events (section 5)
 Drawing
   visible         1 = drawn
   layer           draw layer (change it with Chispita_setLayer, section 7)
+  depth_sort      1 = in a top-down game, sprites lower on the screen draw
+                  in front, so the player can walk behind a tree and in
+                  front of it. Only sorts against other depth_sort sprites
+                  on the same layer, so give everything that should sort
+                  together depth_sort = 1. Sorted by the bottom of the
+                  sprite (its feet), not its center.
   color           fill color for plain shapes
   fill            "fill" = solid shape, anything else = outline only
   alpha           0 to 1 see-through-ness, default 1
@@ -584,6 +590,21 @@ Chispita_pointIn(sprite, x, y)
     clicks:
       p = Chispita_screenToWorld(mouse.x, mouse.y)
       if Chispita_pointIn(button, p.x, p.y) then ... end
+
+Chispita_findGroup(group)
+    A list of every active sprite in a group. Handy for making all of one
+    kind do something, without keeping your own list:
+      for e in Chispita_findGroup("enemy")
+        Chispita_moveToward(e, player.x, player.y, 40)
+      end
+    Disabled and removed sprites aren't included.
+
+Chispita_spritesIn(x, y, width, height)
+    A list of every active sprite whose hit box touches a box centered on
+    x, y. Good for explosions, area attacks and selection boxes:
+      for s in Chispita_spritesIn(bomb.x, bomb.y, 60, 60)
+        if s != bomb then s.vy = 300 end
+      end
 
 Chispita_raycast(x1, y1, x2, y2, ignore)
     Draws an invisible line from point 1 to point 2 and finds the first
@@ -907,6 +928,13 @@ Chispita_watch(label, value)
       Chispita_watch("score", score)
       Chispita_watch("state", enemy.state)
 
+Chispita_mouseOnDebug()
+    1 while debug mode is using the mouse (it's over the panel, or you're
+    dragging a sprite), else 0. Clicks on the panel still reach your game,
+    so check this before reacting to the mouse:
+      if mouse.press and not Chispita_mouseOnDebug() then fire_bullet() end
+    Always 0 when debug mode is off, or the debug file isn't loaded.
+
 THE PANEL
 A panel in the top-right corner lists every tool with a checkbox. Click a
 row to switch it on or off. Click the "DEBUG" title to fold the panel away.
@@ -1052,6 +1080,10 @@ Random
 
   - Call Chispita_update at the END of your update, after your own code.
   - Check grounded before allowing a jump.
+  - Your own variables on a sprite are fine (player.health, enemy.state),
+    but don't reuse the engine's names for something else. Section 4
+    lists them all. For example, use player.health or player.lives for
+    hit points, since lifetime means "remove me after this many seconds".
   - The engine adds physics steps on its own for fast sprites. If
     something still slips through a wall, it's moving faster than
     chispita_max_substeps can catch: raise it, or make the wall thicker.
@@ -1064,7 +1096,7 @@ Random
       bullet = Chispita_addCircle(player.x + 9, player.y, 2)
       bullet.fall = 0         // no gravity
       bullet.drag = 0         // no friction, keeps its speed
-      bullet.life = 2         // gone after 2 seconds if it hits nothing
+      bullet.lifetime = 2     // gone after 2 seconds if it hits nothing
       bullet.vx = 250
   - Changing width or radius only changes the drawing. Use Chispita_setSize
     or Chispita_setRadius to change the hit box too.

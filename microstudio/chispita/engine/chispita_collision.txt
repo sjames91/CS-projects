@@ -365,8 +365,8 @@ chispita_collide_pair = function(s1, s2)
     chispita_try_one_way(s2, s1, a.y + a.ey)
   else
     chispita_resolve(s1, s2, hit)
-    if s1.on_hit then s1.hits[s2.id] = s2 end
-    if s2.on_hit then s2.hits[s1.id] = s1 end
+    if s1.on_hit then s1.hit_list[s2.id] = s2 end
+    if s2.on_hit then s2.hit_list[s1.id] = s1 end
   end
 end
 
@@ -427,10 +427,10 @@ chispita_fire_contact_events = function()
     end
 
     if s.on_hit then
-      for id in s.hits
-        if not s.old_hits[id] then
+      for id in s.hit_list
+        if not s.old_hit_list[id] then
           local f = s.on_hit
-          f(s, s.hits[id])
+          f(s, s.hit_list[id])
         end
       end
     end
@@ -493,6 +493,29 @@ Chispita_pointIn = function(s, x, y)
   local lx = dx * shape.cos + dy * shape.sin
   local ly = dy * shape.cos - dx * shape.sin
   return abs(lx) < shape.hw and abs(ly) < shape.hh
+end
+
+Chispita_findGroup = function(group)
+  local list = []
+  for s in chispita_sprites
+    if s.active and s.group == group then list.push(s) end
+  end
+  return list
+end
+
+chispita_query_shape = object end
+
+Chispita_spritesIn = function(x, y, width, height)
+  local list = []
+  if width <= 0 or height <= 0 then
+    chispita_warn("Chispita_spritesIn needs a width and height above 0.")
+    return list
+  end
+  local area = chispita_set_shape(chispita_query_shape, "rect", x, y, width, height, 0, 0)
+  for s in chispita_sprites
+    if s.active and chispita_test(area, chispita_hit_shape(s)) then list.push(s) end
+  end
+  return list
 end
 
 chispita_ray_slab = function(start, move, half, t)

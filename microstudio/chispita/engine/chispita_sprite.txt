@@ -37,7 +37,7 @@ chispita_new_sprite = function(x,y,shape,physics)
   s.grip = 0
   s.rotate_hit_box = 1
   s.drag = 1
-  s.life = 0
+  s.lifetime = 0
   
   // Sprite hit box variables
   s.hit_box_shape = shape
@@ -68,12 +68,13 @@ chispita_new_sprite = function(x,y,shape,physics)
   s.tile_touched = 0
   s.hurting = object end
   s.on_hit = 0
-  s.hits = object end
-  s.old_hits = object end
+  s.hit_list = object end
+  s.old_hit_list = object end
   
   //Sprite draw variables
   s.visible = 1
   s.layer = 1
+  s.depth_sort = 0
   s.parallax = 1
   s.ui = 0
   s.fill = "fill"
@@ -83,7 +84,7 @@ chispita_new_sprite = function(x,y,shape,physics)
   s.image_part = 0              // part of the image to draw (x, y, w, h in pixels), for tile sheets
   s.animations = object end     // name -> separate image, when not using a sheet
   s.animation = 0               // name of the animation playing, or 0
-  s.sheet = 0                   // sprite sheet from Chispita.addSheet
+  s.sheet = 0                   // sprite sheet from Chispita_addSheet
   s.frame = 0                   // position in the current animation
   s.frame_time = 0
   s.animation_speed = 1         // 2 plays twice as fast, 0.5 half speed
@@ -546,8 +547,8 @@ chispita_begin_frame = function()
     end
 
     if s.on_hit then
-      s.old_hits = s.hits
-      s.hits = object end
+      s.old_hit_list = s.hit_list
+      s.hit_list = object end
     end
   end
 end
@@ -616,9 +617,9 @@ end
 
 chispita_update_lifetimes = function(dt)
   for s in chispita_sprites
-    if s.life > 0 and s.active then
-      s.life -= dt
-      if s.life <= 0 then Chispita_remove(s) end
+    if s.lifetime > 0 and s.active then
+      s.lifetime -= dt
+      if s.lifetime <= 0 then Chispita_remove(s) end
     end
   end
 end

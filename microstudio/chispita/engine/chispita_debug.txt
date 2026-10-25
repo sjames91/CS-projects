@@ -56,6 +56,12 @@ Chispita_toggleDebug = function(name)
   end
 end
 
+Chispita_mouseOnDebug = function()
+  if not chispita_debug_mode then return 0 end
+  if chispita_dragging then return 1 end
+  return chispita_debug_row_at(mouse.x, mouse.y) != "none"
+end
+
 // Debug panel
 chispita_debug_add_row = function(label, field)
   local row = object end
