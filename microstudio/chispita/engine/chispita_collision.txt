@@ -1,0 +1,596 @@
+chispita_ignored = object end
+chispita_hurt_ignored = object end
+chispita_any_ignored = 0
+chispita_any_hurt_ignored = 0
+
+// Set sprite shapes
+chispita_set_shape = function(shape, kind, x, y, width, height, radius, angle)
+  shape.kind = kind
+  shape.x = x
+  shape.y = y
+  shape.angle = 0
+  shape.cos = 1
+  shape.sin = 0
+  if kind == "circle" then
+    shape.r = radius
+    shape.hw = radius
+    shape.hh = radius
+    shape.ex = radius
+    shape.ey = radius
+  else
+    shape.hw = width / 2
+    shape.hh = height / 2
+    shape.ex = shape.hw
+    shape.ey = shape.hh
+    if angle then
+      shape.angle = angle
+      shape.cos = cosd(angle)
+      shape.sin = sind(angle)
+      local c = abs(shape.cos)
+      local n = abs(shape.sin)
+      shape.ex = shape.hw * c + shape.hh * n
+      shape.ey = shape.hw * n + shape.hh * c
+    end
+  end
+  return shape
+end
+
+chispita_hit_angle = function(s)
+  if s.hit_box_shape == "circle" or not s.rotate_hit_box or not s.rotation then return 0 end
+  return s.rotation % 360
+end
+
+chispita_box_shape = function(s, shape, kind, offset_x, offset_y, width, height, radius)
+  local angle = chispita_hit_angle(s)
+  local ox = offset_x
+  local oy = offset_y
+  if angle then
+    local c = cosd(angle)
+    local n = sind(angle)
+    ox = offset_x * c - offset_y * n
+    oy = offset_x * n + offset_y * c
+  end
+  return chispita_set_shape(shape, kind, s.x + ox, s.y + oy, width, height, radius, angle)
+end
+
+chispita_hit_shape = function(s)
+  return chispita_box_shape(s, s.hit_shape, s.hit_box_shape, s.hit_offset_x, s.hit_offset_y, s.hit_width, s.hit_height, s.hit_radius)
+end
+
+chispita_hurt_shape = function(s)
+  return chispita_box_shape(s, s.hurt_shape, s.hurt_box_shape, s.hurt_offset_x, s.hurt_offset_y, s.hurt_width, s.hurt_height, s.hurt_radius)
+end
+
+//Choose direction of push
+chispita_use_x_axis = function(hit)
+  hit.nx = hit.x_side
+  hit.ny = 0
+  hit.overlap = hit.ox
+end
+
+chispita_use_y_axis = function(hit)
+  hit.nx = 0
+  hit.ny = hit.y_side
+  hit.overlap = hit.oy
+end
+
+// Sprite test collisions
+chispita_test_rect_rect = function(a, b)
+  if a.angle or b.angle then return chispita_test_box_box(a, b) end
+  local ox = a.hw + b.hw - abs(a.x - b.x)
+  if ox <= 0 then return 0 end
+  local oy = a.hh + b.hh - abs(a.y - b.y)
+  if oy <= 0 then return 0 end
+
+  local hit = object end
+  hit.ox = ox
+  hit.oy = oy
+  if a.x < b.x then hit.x_side = 1 else hit.x_side = -1 end
+  if a.y < b.y then hit.y_side = 1 else hit.y_side = -1 end
+  if ox < oy then
+    chispita_use_x_axis(hit)
+  else
+    chispita_use_y_axis(hit)
+  end
+  return hit
+end
+
+chispita_test_box_box = function(a, b)
+  local dx = b.x - a.x
+  local dy = b.y - a.y
+  local axes = [a.cos, a.sin, -a.sin, a.cos, b.cos, b.sin, -b.sin, b.cos]
+  local best = -1
+  local best_nx = 0
+  local best_ny = 0
+  for i = 0 to 6 by 2
+    local ax = axes[i]
+    local ay = axes[i + 1]
+    local ra = a.hw * abs(a.cos * ax + a.sin * ay) + a.hh * abs(a.cos * ay - a.sin * ax)
+    local rb = b.hw * abs(b.cos * ax + b.sin * ay) + b.hh * abs(b.cos * ay - b.sin * ax)
+    local d = dx * ax + dy * ay
+    local overlap = ra + rb - abs(d)
+    if overlap <= 0 then return 0 end
+    if best < 0 or overlap < best then
+      best = overlap
+      if d < 0 then
+        best_nx = -ax
+        best_ny = -ay
+      else
+        best_nx = ax
+        best_ny = ay
+      end
+    end
+  end
+
+  local hit = object end
+  hit.nx = best_nx
+  hit.ny = best_ny
+  hit.overlap = best
+  return hit
+end
+
+chispita_test_rect_circle = function(r, c)
+  local wx = c.x - r.x
+  local wy = c.y - r.y
+  local lx = wx * r.cos + wy * r.sin
+  local ly = wy * r.cos - wx * r.sin
+
+  local px = max(-r.hw, min(lx, r.hw))
+  local py = max(-r.hh, min(ly, r.hh))
+  local dx = lx - px
+  local dy = ly - py
+  local distance_sq = dx * dx + dy * dy
+  if distance_sq >= c.r * c.r then return 0 end
+
+  local distance = sqrt(distance_sq)
+  local nx = 0
+  local ny = 0
+  local overlap = 0
+  if distance > 0.001 then
+    nx = dx / distance
+    ny = dy / distance
+    overlap = c.r - distance + 0.02
+  else
+    local to_left = lx + r.hw
+    local to_right = r.hw - lx
+    local to_bottom = ly + r.hh
+    local to_top = r.hh - ly
+    local nearest = min(min(to_left, to_right), min(to_bottom, to_top))
+    if nearest == to_left then
+      nx = -1
+    elsif nearest == to_right then
+      nx = 1
+    elsif nearest == to_bottom then
+      ny = -1
+    else
+      ny = 1
+    end
+    overlap = nearest + c.r + 0.02
+  end
+
+  local hit = object end
+  hit.nx = nx * r.cos - ny * r.sin
+  hit.ny = nx * r.sin + ny * r.cos
+  hit.overlap = overlap
+  return hit
+end
+
+chispita_test_circle_circle = function(a, b)
+  local dx = b.x - a.x
+  local dy = b.y - a.y
+  local radii = a.r + b.r
+  local distance_sq = dx * dx + dy * dy
+  if distance_sq >= radii * radii then return 0 end
+
+  local distance = sqrt(distance_sq)
+  local hit = object end
+  if distance > 0.001 then
+    hit.nx = dx / distance
+    hit.ny = dy / distance
+  else
+    hit.nx = 0
+    hit.ny = 1
+  end
+  hit.overlap = radii - distance
+  return hit
+end
+
+chispita_test = function(a, b)
+  if a.kind == "circle" and b.kind == "circle" then
+    return chispita_test_circle_circle(a, b)
+  elsif b.kind == "circle" then
+    return chispita_test_rect_circle(a, b)
+  elsif a.kind == "circle" then
+    local hit = chispita_test_rect_circle(b, a)
+    if hit then
+      hit.nx = -hit.nx
+      hit.ny = -hit.ny
+    end
+    return hit
+  end
+  return chispita_test_rect_rect(a, b)
+end
+
+// Collision responses
+chispita_movable = function(s)
+  return s.solid and not s.fixed and not s.kinematic
+end
+
+chispita_inverse_mass = function(s)
+  if not chispita_movable(s) then return 0 end
+  if s.mass <= 0 then
+    chispita_warn("sprite #" + s.id + " has mass " + s.mass + ". Mass must be above 0, so 1 is used.")
+    return 1
+  end
+  return 1 / s.mass
+end
+
+chispita_ground = function(s, surface)
+  s.grounded = 1
+  local surface_vy = 0
+  if surface.kinematic then
+    s.riding = surface
+    surface_vy = surface.vy
+  end
+  if abs(s.vy - surface_vy) < chispita_rest_speed then
+    s.vy = 0
+  end
+end
+
+chispita_resolve = function(s1, s2, hit)
+  local nx = hit.nx
+  local ny = hit.ny
+  local w1 = chispita_inverse_mass(s1)
+  local w2 = chispita_inverse_mass(s2)
+  local total = w1 + w2
+  if total <= 0 then return end
+
+  local push = max(hit.overlap - chispita_collision_slop, 0) * chispita_collision_push / total
+  s1.x -= nx * push * w1
+  s1.y -= ny * push * w1
+  s2.x += nx * push * w2
+  s2.y += ny * push * w2
+
+  local rvx = s2.vx - s1.vx
+  local rvy = s2.vy - s1.vy
+  local speed_into_normal = rvx * nx + rvy * ny
+  if speed_into_normal < 0 then
+    local bounce = s1.bounciness * s2.bounciness
+    if -speed_into_normal < chispita_rest_speed then bounce = 0 end
+    local impulse = -(1 + bounce) * speed_into_normal / total
+    s1.vx -= impulse * nx * w1
+    s1.vy -= impulse * ny * w1
+    s2.vx += impulse * nx * w2
+    s2.vy += impulse * ny * w2
+
+    local grip = (s1.grip + s2.grip) / 2
+    local riding = (s2.kinematic and ny < -0.9) or (s1.kinematic and ny > 0.9)
+    if grip > 0 and not riding then
+      local tx = -ny
+      local ty = nx
+      local slide = rvx * tx + rvy * ty
+      local limit = grip * impulse
+      local friction_impulse = max(-limit, min(-slide / total, limit))
+      s1.vx -= friction_impulse * tx * w1
+      s1.vy -= friction_impulse * ty * w1
+      s2.vx += friction_impulse * tx * w2
+      s2.vy += friction_impulse * ty * w2
+    end
+  end
+
+  if w1 > 0 and ny < -0.9 then chispita_ground(s1, s2) end
+  if w2 > 0 and ny > 0.9 then chispita_ground(s2, s1) end
+end
+
+chispita_try_one_way = function(mover, platform, platform_top)
+  if mover.drop_through or not chispita_movable(mover) then return end
+  local half = chispita_hit_shape(mover).ey
+  local old_bottom = mover.old_y + mover.hit_offset_y - half
+  if mover.vy > platform.vy or old_bottom < platform_top - 0.5 then return end
+
+  local bottom = mover.y + mover.hit_offset_y - half
+  mover.y += platform_top - bottom
+  mover.vy = platform.vy - (mover.vy - platform.vy) * mover.bounciness * platform.bounciness
+  chispita_ground(mover, platform)
+end
+
+Chispita_ignore = function(group_a, group_b)
+  if not group_a or not group_b then
+    chispita_warn("Chispita_ignore needs two group names, like Chispita_ignore('player', 'ghost').")
+    return
+  end
+  chispita_ignored[group_a + "|" + group_b] = 1
+  chispita_ignored[group_b + "|" + group_a] = 1
+  chispita_any_ignored = 1
+end
+
+Chispita_ignoreHurt = function(group_a, group_b)
+  if not group_a or not group_b then
+    chispita_warn("Chispita_ignoreHurt needs two group names, like Chispita_ignoreHurt('player', 'player').")
+    return
+  end
+  chispita_hurt_ignored[group_a + "|" + group_b] = 1
+  chispita_hurt_ignored[group_b + "|" + group_a] = 1
+  chispita_any_hurt_ignored = 1
+end
+
+chispita_can_collide = function(s1, s2)
+  if not chispita_any_ignored then return 1 end
+  return not chispita_ignored[s1.group + "|" + s2.group]
+end
+
+chispita_can_hurt = function(attacker, victim)
+  if not chispita_any_hurt_ignored then return 1 end
+  return not chispita_hurt_ignored[attacker.group + "|" + victim.group]
+end
+
+chispita_update_bounds = function(s)
+  local shape = chispita_hit_shape(s)
+  s.left = shape.x - shape.ex
+  s.right = shape.x + shape.ex
+  s.bottom = shape.y - shape.ey
+  s.top = shape.y + shape.ey
+end
+
+chispita_sort_by_left = function(list)
+  for i = 1 to list.length - 1 by 1
+    local s = list[i]
+    local j = i - 1
+    while j >= 0
+      if list[j].left <= s.left then break end
+      list[j + 1] = list[j]
+      j -= 1
+    end
+    list[j + 1] = s
+  end
+end
+
+chispita_record_contact = function(s1, s2)
+  if s1.trigger then s1.contacts[s2.id] = s2 end
+  if s2.trigger then s2.contacts[s1.id] = s1 end
+end
+
+chispita_collide_pair = function(s1, s2)
+  local a = chispita_hit_shape(s1)
+  local b = chispita_hit_shape(s2)
+  local hit = chispita_test(a, b)
+  if not hit then return end
+
+  chispita_record_contact(s1, s2)
+  if not (s1.solid and s2.solid) then return end
+  if s1.one_way and s2.one_way then return end
+  if s2.one_way then
+    chispita_try_one_way(s1, s2, b.y + b.ey)
+  elsif s1.one_way then
+    chispita_try_one_way(s2, s1, a.y + a.ey)
+  else
+    chispita_resolve(s1, s2, hit)
+    if s1.on_hit then s1.hits[s2.id] = s2 end
+    if s2.on_hit then s2.hits[s1.id] = s1 end
+  end
+end
+
+chispita_step_passes = 0
+
+chispita_check_collisions = function()
+  local passes = chispita_step_passes
+  if passes < 1 then passes = chispita_collision_passes end
+  for pass = 1 to passes by 1
+    chispita_collision_pass()
+  end
+end
+
+chispita_collision_pass = function()
+  for s in chispita_sprites
+    if s.active and s.physics then chispita_update_bounds(s) end
+  end
+  chispita_sort_by_left(chispita_sprites)
+
+  local n = chispita_sprites.length
+  for i = 0 to n - 1 by 1
+    local s1 = chispita_sprites[i]
+    if not (s1.active and s1.physics) then continue end
+    local s1_matters = chispita_movable(s1) or s1.trigger
+    for j = i + 1 to n - 1 by 1
+      local s2 = chispita_sprites[j]
+      if not (s2.active and s2.physics) then continue end
+      if s2.left > s1.right then break end
+      if s2.bottom > s1.top or s2.top < s1.bottom then continue end
+      if not (s1_matters or chispita_movable(s2) or s2.trigger) then continue end
+      if chispita_can_collide(s1, s2) then
+        chispita_collide_pair(s1, s2)
+      end
+    end
+  end
+end
+
+chispita_fire_contact_events = function()
+  for s in chispita_sprites
+    if s.trigger then
+      for id in s.contacts
+        local other = s.contacts[id]
+        if s.on_enter and not s.old_contacts[id] then
+          local f = s.on_enter
+          f(s, other)
+        end
+        if s.callback then
+          local f = s.callback
+          f(s, other)
+        end
+      end
+      for id in s.old_contacts
+        if s.on_exit and not s.contacts[id] then
+          local f = s.on_exit
+          f(s, s.old_contacts[id])
+        end
+      end
+    end
+
+    if s.on_hit then
+      for id in s.hits
+        if not s.old_hits[id] then
+          local f = s.on_hit
+          f(s, s.hits[id])
+        end
+      end
+    end
+
+    if s.tile_touched then
+      for key in s.tile_contacts
+        local tile = s.tile_contacts[key]
+        if s.trigger and s.on_tile then
+          local f = s.on_tile
+          f(s, tile)
+        end
+        if tile.map.callback then
+          local f = tile.map.callback
+          f(s, tile)
+        end
+      end
+    end
+  end
+end
+
+chispita_check_hurt_boxes = function()
+  for a in chispita_sprites
+    if not (a.hurt_box and a.active) then
+      if a.was_hurting then
+        a.hurting = object end
+        a.was_hurting = 0
+      end
+      continue
+    end
+    a.was_hurting = 1
+    local hurt = chispita_hurt_shape(a)
+    for b in chispita_sprites
+      if b == a or not (b.active and b.physics) then continue end
+      if not chispita_can_hurt(a, b) then continue end
+      if a.hurting[b.id] then continue end
+      if chispita_test(hurt, chispita_hit_shape(b)) then
+        a.hurting[b.id] = b
+        if a.on_hurt then
+          local f = a.on_hurt
+          f(a, b)
+        end
+      end
+    end
+  end
+end
+
+// Collision response questions
+Chispita_overlaps = function(a, b)
+  if chispita_test(chispita_hit_shape(a), chispita_hit_shape(b)) then return 1 end
+  return 0
+end
+
+Chispita_pointIn = function(s, x, y)
+  local shape = chispita_hit_shape(s)
+  local dx = x - shape.x
+  local dy = y - shape.y
+  if shape.kind == "circle" then
+    return dx * dx + dy * dy < shape.r * shape.r
+  end
+  local lx = dx * shape.cos + dy * shape.sin
+  local ly = dy * shape.cos - dx * shape.sin
+  return abs(lx) < shape.hw and abs(ly) < shape.hh
+end
+
+chispita_ray_slab = function(start, move, half, t)
+  if abs(move) < 0.000001 then
+    if start < -half or start > half then t.miss = 1 end
+    return
+  end
+  local t1 = (-half - start) / move
+  local t2 = (half - start) / move
+  if t1 > t2 then
+    local swap = t1
+    t1 = t2
+    t2 = swap
+  end
+  t.near = max(t.near, t1)
+  t.far = min(t.far, t2)
+  if t.near > t.far then t.miss = 1 end
+end
+
+chispita_ray_sprite = function(s, x1, y1, dx, dy)
+  local shape = chispita_hit_shape(s)
+  local fx = x1 - shape.x
+  local fy = y1 - shape.y
+  if shape.kind == "circle" then
+    local a = dx * dx + dy * dy
+    local b = 2 * (fx * dx + fy * dy)
+    local c = fx * fx + fy * fy - shape.r * shape.r
+    if c <= 0 then return 0 end
+    local disc = b * b - 4 * a * c
+    if disc < 0 then return -1 end
+    local t = (-b - sqrt(disc)) / (2 * a)
+    if t < 0 or t > 1 then return -1 end
+    return t
+  end
+  local lx = fx * shape.cos + fy * shape.sin
+  local ly = fy * shape.cos - fx * shape.sin
+  local ldx = dx * shape.cos + dy * shape.sin
+  local ldy = dy * shape.cos - dx * shape.sin
+  local t = object end
+  t.near = 0
+  t.far = 1
+  t.miss = 0
+  chispita_ray_slab(lx, ldx, shape.hw, t)
+  if not t.miss then chispita_ray_slab(ly, ldy, shape.hh, t) end
+  if t.miss then return -1 end
+  return t.near
+end
+
+Chispita_raycast = function(x1, y1, x2, y2, ignore)
+  local dx = x2 - x1
+  local dy = y2 - y1
+  local length = sqrt(dx * dx + dy * dy)
+  if length == 0 then return 0 end
+
+  local best = 2
+  local best_sprite = 0
+  for s in chispita_sprites
+    if s == ignore or not (s.active and s.physics and s.solid) then continue end
+    local t = chispita_ray_sprite(s, x1, y1, dx, dy)
+    if t >= 0 and t < best then
+      best = t
+      best_sprite = s
+    end
+  end
+
+  local best_tile = 0
+  for m in chispita_maps
+    if not (m.map and m.physics and m.active) then continue end
+    local found = chispita_ray_map(m, x1, y1, dx, dy, best)
+    if found and found.t < best then
+      best = found.t
+      best_tile = found.tile
+      best_sprite = 0
+    end
+  end
+
+  if best > 1 then return 0 end
+  local hit = object end
+  hit.x = x1 + dx * best
+  hit.y = y1 + dy * best
+  hit.distance = length * best
+  hit.sprite = best_sprite
+  hit.tile = best_tile
+  return hit
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,332 @@
+chispita_maps = []
+
+// Add maps
+Chispita_addMap = function(name, x, y, physics, cell_size)
+  local m = object end
+  m.id = chispita_next_id
+  chispita_next_id += 1
+  m.name = name
+  m.map = maps[name]
+  if not m.map then chispita_warn("no map named " + name + ". Check the name in the map editor.") end
+  if physics and physics != physics_on and physics != physics_off then
+    chispita_warn("Chispita_addMap: physics should be physics_on or physics_off, not " + physics + ". Using physics_on.")
+  end
+  m.x = x
+  m.y = y
+  m.cell_size = cell_size
+  m.physics = physics != physics_off
+  m.active = 1
+  m.visible = 1
+  m.parallax = 1
+  m.ui = 0
+  m.bounciness = 0.3
+  m.grip = 0
+  m.callback = 0         // a sprite touched a tile: callback(sprite, tile)
+  m.hollow = object end
+  m.one_way = object end
+  m.kinds = object end   // remembers each cell value's kind so it's only worked out once
+  m.layout = 0
+  m.cloned = 0
+  if m.physics then m.layer = 0 else m.layer = -1 end
+
+  m.tile_body = object end
+  m.tile_body.shape = object end
+  m.tile_body.fixed = 1
+  m.tile_body.solid = 1
+  m.tile_body.kinematic = 0
+  m.tile_body.vx = 0
+  m.tile_body.vy = 0
+
+  m.draw = function()
+    chispita_draw_map(this)
+  end
+
+  chispita_maps.push(m)
+  chispita_add_drawable(m)
+  return m
+end
+
+//World Size
+chispita_map_layout = function(m)
+  if not m.map then return 0 end
+  local l = m.layout
+  if l and l.x == m.x and l.y == m.y and l.cell_size == m.cell_size and l.map == m.map then
+    return l
+  end
+
+  l = object end
+  l.x = m.x
+  l.y = m.y
+  l.cell_size = m.cell_size
+  l.map = m.map
+  l.cw = m.cell_size
+  if not l.cw then l.cw = m.map.block_width end
+  l.ch = l.cw * m.map.block_height / m.map.block_width
+  l.width = m.map.width * l.cw
+  l.height = m.map.height * l.ch
+  l.left = m.x - l.width / 2
+  l.bottom = m.y - l.height / 2
+  m.layout = l
+  return l
+end
+
+//Tile flags
+chispita_tile_name = function(cell)
+  if not cell then return "" end
+  return cell.split(":")[0]
+end
+
+chispita_set_tile_rule = function(m, tile_name, hollow, one_way)
+  if not m.hollow then
+    chispita_warn("tile rules need a map from Chispita_addMap.")
+    return
+  end
+  m.hollow[tile_name] = hollow
+  m.one_way[tile_name] = one_way
+  m.kinds = object end   // forget remembered kinds, the rules changed
+end
+
+Chispita_setHollow = function(m, tile_name)
+  chispita_set_tile_rule(m, tile_name, 1, 0)
+end
+
+Chispita_setSolid = function(m, tile_name)
+  chispita_set_tile_rule(m, tile_name, 0, 0)
+end
+
+Chispita_setOneWay = function(m, tile_name)
+  chispita_set_tile_rule(m, tile_name, 0, 1)
+end
+
+chispita_tile_kind = function(m, cell)
+  if not cell then return "empty" end
+  local kind = m.kinds[cell]
+  if kind then return kind end
+
+  local name = chispita_tile_name(cell)
+  if m.hollow[name] then
+    kind = "empty"
+  elsif m.one_way[name] then
+    kind = "one_way"
+  else
+    kind = "solid"
+  end
+  m.kinds[cell] = kind
+  return kind
+end
+
+chispita_tile_is_solid = function(m, cx, cy)
+  return chispita_tile_kind(m, m.map.get(cx, cy)) == "solid"
+end
+
+chispita_make_tile = function(m, l, cx, cy, cell)
+  local tile = object end
+  tile.map = m
+  tile.cell = cell
+  tile.name = chispita_tile_name(cell)
+  tile.cx = cx
+  tile.cy = cy
+  tile.x = l.left + (cx + 0.5) * l.cw
+  tile.y = l.bottom + (cy + 0.5) * l.ch
+  return tile
+end
+
+chispita_tile_image_part = function(m, cell)
+  local parts = cell.split(":")
+  if parts.length < 2 then return 0 end
+  local coords = parts[1].split(",")
+  local part = object end
+  part.w = m.map.block_width
+  part.h = m.map.block_height
+  part.x = coords[0] * part.w
+  part.y = coords[1] * part.h
+  return part
+end
+
+chispita_skip_internal_edge = function(m, body, hit)
+  if not chispita_tile_is_solid(m, body.cx - hit.nx, body.cy - hit.ny) then return hit end
+  if hit.nx != 0 then
+    chispita_use_y_axis(hit)
+  else
+    chispita_use_x_axis(hit)
+  end
+  if chispita_tile_is_solid(m, body.cx - hit.nx, body.cy - hit.ny) then return 0 end
+  return hit
+end
+
+chispita_record_tile_touch = function(s, m, l, cx, cy, cell)
+  local key = m.id + ":" + cx + "," + cy
+  if s.tile_contacts[key] then return end
+  s.tile_contacts[key] = chispita_make_tile(m, l, cx, cy, cell)
+  s.tile_touched = 1
+end
+
+chispita_collide_sprite_map = function(s, m, l)
+  local wants_touch = (s.trigger and s.on_tile) or m.callback
+  if not (chispita_movable(s) or wants_touch) then return end
+  local shape = chispita_hit_shape(s)
+  local x0 = max(0, floor((shape.x - shape.ex - l.left) / l.cw))
+  local x1 = min(m.map.width - 1, floor((shape.x + shape.ex - l.left) / l.cw))
+  local y0 = max(0, floor((shape.y - shape.ey - l.bottom) / l.ch))
+  local y1 = min(m.map.height - 1, floor((shape.y + shape.ey - l.bottom) / l.ch))
+  local body = m.tile_body
+  body.bounciness = m.bounciness
+  body.grip = m.grip
+  
+  for cy = y0 to y1 by 1
+    for cx = x0 to x1 by 1
+      local cell = m.map.get(cx, cy)
+      local kind = chispita_tile_kind(m, cell)
+      if kind == "empty" then continue end
+
+      body.cx = cx
+      body.cy = cy
+      chispita_set_shape(body.shape, "rect", l.left + (cx + 0.5) * l.cw, l.bottom + (cy + 0.5) * l.ch, l.cw, l.ch, 0)
+
+      local hit = chispita_test(chispita_hit_shape(s), body.shape)
+      if hit and hit.ox and kind == "solid" then
+        hit = chispita_skip_internal_edge(m, body, hit)
+      end
+      if not hit then continue end
+
+      if wants_touch then chispita_record_tile_touch(s, m, l, cx, cy, cell) end
+      if kind == "one_way" then
+        chispita_try_one_way(s, body, body.shape.y + body.shape.hh)
+      else
+        chispita_resolve(s, body, hit)
+      end
+    end
+  end
+end
+
+chispita_ray_map = function(m, x1, y1, dx, dy, limit)
+  local l = chispita_map_layout(m)
+  if not l then return 0 end
+  local gx = (x1 - l.left) / l.cw
+  local gy = (y1 - l.bottom) / l.ch
+  local gdx = dx / l.cw
+  local gdy = dy / l.ch
+  local cx = floor(gx)
+  local cy = floor(gy)
+  local huge = 1000000000
+
+  local step_x = 0
+  local next_x = huge
+  local delta_x = huge
+  if gdx > 0 then
+    step_x = 1
+    next_x = (cx + 1 - gx) / gdx
+    delta_x = 1 / gdx
+  elsif gdx < 0 then
+    step_x = -1
+    next_x = (gx - cx) / -gdx
+    delta_x = 1 / -gdx
+  end
+
+  local step_y = 0
+  local next_y = huge
+  local delta_y = huge
+  if gdy > 0 then
+    step_y = 1
+    next_y = (cy + 1 - gy) / gdy
+    delta_y = 1 / gdy
+  elsif gdy < 0 then
+    step_y = -1
+    next_y = (gy - cy) / -gdy
+    delta_y = 1 / -gdy
+  end
+
+  local t = 0
+  while t <= min(1, limit)
+    if cx >= 0 and cy >= 0 and cx < m.map.width and cy < m.map.height then
+      local cell = m.map.get(cx, cy)
+      if chispita_tile_kind(m, cell) == "solid" then
+        local found = object end
+        found.t = t
+        found.tile = chispita_make_tile(m, l, cx, cy, cell)
+        return found
+      end
+    end
+    if next_x < next_y then
+      cx += step_x
+      t = next_x
+      next_x += delta_x
+    else
+      cy += step_y
+      t = next_y
+      next_y += delta_y
+    end
+  end
+  return 0
+end
+
+chispita_check_map_collisions = function()
+  for m in chispita_maps
+    if not (m.map and m.physics and m.active) then continue end
+    local l = chispita_map_layout(m)
+    for s in chispita_sprites
+      if s.active and s.physics then
+        chispita_collide_sprite_map(s, m, l)
+      end
+    end
+  end
+end
+
+Chispita_cellAt = function(m, x, y)
+  if not m.map then
+    chispita_warn("Chispita_cellAt needs a map from Chispita_addMap.")
+    return 0
+  end
+  local l = chispita_map_layout(m)
+  if not l then return 0 end
+  return m.map.get(floor((x - l.left) / l.cw), floor((y - l.bottom) / l.ch))
+end
+  
+Chispita_spawnFromMap = function(m, tile_name)
+  local list = []
+  if not m.map then
+    chispita_warn("Chispita_spawnFromMap needs a map from Chispita_addMap.")
+    return list
+  end
+  local l = chispita_map_layout(m)
+  if not l then return list end
+  
+  if not m.cloned then
+    m.map = m.map.clone()
+    m.cloned = 1
+    l = chispita_map_layout(m)
+  end
+  
+  for cy = 0 to m.map.height - 1 by 1
+    for cx = 0 to m.map.width - 1 by 1
+      local cell = m.map.get(cx, cy)
+      if not cell then continue end
+      if cell != tile_name and chispita_tile_name(cell) != tile_name then continue end
+
+      m.map.set(cx, cy, 0)
+      local x = l.left + (cx + 0.5) * l.cw
+      local y = l.bottom + (cy + 0.5) * l.ch
+      local s = Chispita_addRect(x, y, l.cw, l.ch)
+      s.image = chispita_tile_name(cell)
+      s.image_part = chispita_tile_image_part(m, cell)
+      list.push(s)
+    end
+  end
+  m.map.update()
+  return list
+end
+  
+chispita_draw_map = function(m)
+  local l = chispita_map_layout(m)
+  if not l then return end
+  local x = chispita_screen_x(m, m.x)
+  local y = chispita_screen_y(m, m.y)
+  screen.drawMap(m.map, x, y, chispita_screen_size(m, l.width), chispita_screen_size(m, l.height))
+end
+  
+  
+  
+  
+  
+  
+  

@@ -1,0 +1,1086 @@
+================================================================================
+                        CHISPITA ENGINE - microStudio edition
+                                  Documentation
+================================================================================
+
+Chispita is a small 2D engine written in microScript for microStudio. It
+gives you sprites (rects, circles and images), physics and collisions, tile
+maps, a camera, text, particles, animated sprite sheets, timers, a debug
+mode, and a set of math helpers.
+
+This guide lists every function and variable a game can use, in the order
+you'll usually meet them.
+
+CONTENTS
+  1.  Getting started
+  2.  Conventions
+  3.  Main: init, update, draw and settings
+  4.  Sprites
+  5.  Collisions and events
+  6.  Maps
+  7.  Camera and drawing layers
+  8.  Timers and time
+  9.  Debug mode
+  10. Helpers
+  11. Tips and gotchas
+
+
+--------------------------------------------------------------------------------
+1. GETTING STARTED
+--------------------------------------------------------------------------------
+
+The engine is 9 text files in the "engine" folder:
+
+  chispita_config      settings (gravity, friction, mode, ...)
+  chispita_main        Chispita_init, Chispita_update, Chispita_draw
+  chispita_sprite      sprites, text, particles, sheets and animation
+  chispita_collision   collisions, groups, triggers, hurt boxes
+  chispita_map         maps from the map editor
+  chispita_camera      camera, screen positions, drawing layers
+  chispita_timers      timers, tweens and game time
+  chispita_debug       debug mode (optional, leave it out of a finished game)
+  chispita_helpers     math helpers (optional)
+
+To add it to a microStudio project:
+
+  1. Open the project's Code tab.
+  2. For each file, add a new source file with the same name (without
+     ".txt") and paste the whole file into it.
+  3. Write your game in the project's "main" file.
+
+The files can be in any order. Your game then calls the engine from its own
+init, update and draw:
+
+    init = function()
+      Chispita_init()
+      chispita_mode = "platformer"
+
+      ground = Chispita_addRect(0, -80, 300, 20)
+      ground.fixed = 1
+
+      player = Chispita_addRect(0, 0, 14, 14)
+      Chispita_setTarget(player)
+    end
+
+    update = function()
+      if keyboard.LEFT then player.vx -= 20 end
+      if keyboard.RIGHT then player.vx += 20 end
+      if keyboard.press.UP and player.grounded then player.vy = 220 end
+      Chispita_update()
+    end
+
+    draw = function()
+      Chispita_draw()
+    end
+
+
+--------------------------------------------------------------------------------
+2. CONVENTIONS
+--------------------------------------------------------------------------------
+
+  - Every function your game can call starts with Chispita_ and uses
+    camelCase: Chispita_addRect, Chispita_setTarget, ...
+  - Functions that start with a lowercase chispita_ are the engine's
+    insides. Don't call them.
+  - Settings and engine variables are lowercase and start with chispita_:
+    chispita_gravity, chispita_mode, ... The two objects you use directly,
+    Camera and Debug, are capitalized.
+  - Coordinates follow microStudio: (0, 0) is the center of the screen and
+    y points UP. The screen is about 200 units tall.
+  - Every object's x, y is its CENTER (rects too).
+  - Speeds (vx, vy) are in units per second.
+  - Angles are in degrees: 0 points right, 90 up, 180 left, 270 down.
+  - True and false are 1 and 0.
+  - Chispita_disable / Chispita_enable switch things off and on.
+    Chispita_remove takes something out for good. Chispita_init starts over.
+  - Colors are microStudio color strings, like "rgb(255,200,80)".
+  - Leaving out an optional value is the same as passing 0 in microScript.
+    So a value that defaults to something else can't be set to 0 by
+    passing 0 (see the notes on each function).
+
+WARNINGS
+microScript never stops with an error: a misspelled name just becomes 0
+and the game carries on. To help, Chispita prints a warning in the console
+when it spots a likely mistake. Each warning prints only once. It warns
+about things like:
+  - a physics value that isn't physics_on or physics_off
+  - a sprite, map or animation name that doesn't exist
+  - a size of 0 or less, a mass of 0 or less
+  - passing 0 (nothing) where a sprite or map was expected
+  - a sprite variable that looks like a typo of a real one:
+      player.kinematc = 1
+      Chispita: sprite #3 has 'kinematc', which isn't a sprite setting.
+                Did you mean 'kinematic'?
+    Your own variables (player.jumps, enemy.state) are fine. If a name of
+    yours happens to look like a real one, just ignore the warning.
+If something doesn't work, check the console first.
+
+
+--------------------------------------------------------------------------------
+3. MAIN: INIT, UPDATE, DRAW AND SETTINGS
+--------------------------------------------------------------------------------
+
+Chispita_init()
+    A fresh start. Puts every setting back to the values in chispita_config,
+    and empties the world: no sprites, text, maps, particles or timers, and
+    the camera back at the center with zoom 1.
+    Call it first thing in your init. Call it again any time you want to
+    restart a level, then build the level again:
+
+      build_level = function()
+        Chispita_init()
+        player = Chispita_addRect(0, 0, 14, 14)
+        ...
+      end
+
+    It does NOT reset your debug tool choices (grid, hit boxes, ...).
+
+Chispita_update(dt)
+    Runs one frame of the engine: movement, collisions, events, timers,
+    particles, animations and the camera. Call it once at the END of your
+    update, after your own code has set speeds and so on.
+      dt   optional, seconds since the last frame. Defaults to 1/60.
+
+Chispita_draw()
+    Clears the screen to the background color and draws everything in layer
+    order. Call it once in your draw.
+
+PAUSING
+
+Chispita_pause()
+    Freezes the game: no movement, collisions, events, animations,
+    particles or camera, and Chispita_deltaTime() gives 0. Drawing keeps
+    going, so the frozen game stays on screen behind your menu.
+    Timers and tweens started WHILE paused keep running, so you can animate
+    a pause menu; timers from the game wait until you resume.
+
+      if keyboard.press.P then
+        if Chispita_isPaused() then
+          Chispita_resume()
+          Chispita_disable(menu_text)
+        else
+          Chispita_pause()
+          Chispita_enable(menu_text)
+          menu_text.size = 4
+          Chispita_tween(menu_text, "size", 12, 0.3, "smooth")
+        end
+      end
+
+Chispita_resume()
+    Carries on exactly where the game stopped.
+
+Chispita_isPaused()
+    1 while paused, else 0.
+
+SETTINGS
+These live in chispita_config. Chispita_init sets them to these values, and
+your game can change any of them at any time (usually right after
+Chispita_init). They all start with chispita_ so they can't clash with your
+own variables: your game can have its own "mode" or "gravity".
+
+  chispita_mode = "topdown"
+      "topdown" or "platformer". Gravity only works in "platformer".
+  chispita_gravity = 500
+      Downward pull in platformer mode (units per second, per second).
+  chispita_friction = 0.85
+      Fraction of speed kept each frame. In platformer mode it's used on the
+      ground; in topdown mode on both axes, always.
+  chispita_air_friction = 0.95
+      Fraction of sideways speed kept each frame in the air (platformer).
+  chispita_rest_speed = 30
+      Landing slower than this stops instead of bouncing (units per second).
+  chispita_substeps = 1
+      The least number of physics steps per frame. The engine adds more on
+      its own when something moves fast enough to pass through a wall.
+  chispita_max_substeps = 8
+      The most physics steps per frame, so one runaway sprite can't freeze
+      the game.
+  chispita_time_scale = 1
+      Speed of game time. 0.5 = slow motion, 0 = frozen, 2 = double speed.
+      Affects everything: movement, timers, particles, animation, camera.
+  chispita_collision_passes = 3
+      How many times collisions are checked each frame. More = steadier
+      stacks, more work. When the engine adds extra physics steps, it
+      shares these passes out between them instead of doing all of them on
+      every step.
+  chispita_collision_slop = 0.1
+      Overlap allowed to stay, so resting things don't shiver.
+  chispita_collision_push = 0.8
+      How much of an overlap is pushed out per pass (0.8 = 80%).
+  chispita_particle_gravity = 0
+      Downward pull on particles.
+  chispita_background = "rgb(0,0,0)"
+      Color the screen is cleared to. 0 = don't clear.
+  chispita_debug_mode = 0
+      1 = debug mode on (section 9).
+
+To change a default for every game, edit chispita_config itself.
+
+WHAT HAPPENS EACH FRAME
+Chispita_update does this, in order:
+  0. In debug mode: handles the panel and dragging, and skips the rest if
+     the game is paused.
+  1. Resets grounded and starts new contact lists.
+  2. Repeats chispita_substeps times (more when something is moving fast):
+       a. moves kinematic sprites, then everything else (gravity, riding,
+          speed)
+       b. sprite-against-sprite collisions (chispita_collision_passes times)
+       c. sprite-against-map collisions
+  3. Applies friction.
+  4. Fires on_enter, callback, on_exit, on_tile and map callbacks.
+  5. Checks hurt boxes and fires on_hurt.
+  6. Runs timers and tweens.
+  7. Moves particles.
+  8. Advances animations and fires on_animation_end.
+  9. Moves the camera (follow, bounds, shake).
+  10. Takes out anything removed with Chispita_remove this frame.
+
+
+--------------------------------------------------------------------------------
+4. SPRITES
+--------------------------------------------------------------------------------
+
+CREATING SPRITES
+
+Chispita_addRect(x, y, width, height, physics)
+    Makes a rectangle and returns it.
+      x, y        center position
+      width       full width
+      height      full height
+      physics     optional. Left out or physics_on = moves, falls and
+                  collides. physics_off = just a picture (scenery).
+
+Chispita_addCircle(x, y, radius, physics)
+    Makes a circle and returns it. physics works the same as above.
+
+Chispita_addSprite(image, x, y, width, height, physics)
+    Makes a rectangle that draws an image from the sprite editor.
+      image       sprite name, e.g. "hero" (or a sheet, see below)
+      width       optional. Defaults to the image's width in pixels.
+      height      optional. Defaults to keeping the image's proportions.
+      physics     optional, as above.
+    To keep the image's size AND set physics, pass 0 for the size:
+      tree = Chispita_addSprite("tree", 50, 0, 0, 0, physics_off)
+    A misspelled name prints "Chispita: no sprite named ..." in the console
+    and makes a plain 16x16 box, so you can see where it is.
+
+    physics_off sets physics = 0, fall = 0, fixed = 1, solid = 0 and
+    bounciness = 0 for you.
+
+Chispita_setSize(sprite, width, height)
+    Changes a rect's drawn size, hit box and hurt box together. (Setting
+    width on its own only changes the drawing.)
+
+Chispita_setRadius(sprite, radius)
+    The same for circles.
+
+Chispita_disable(o)
+    Sets active = 0 and visible = 0. Works on sprites, text and maps.
+    A disabled sprite stops moving, colliding and drawing.
+
+Chispita_enable(o)
+    Sets active = 1 and visible = 1.
+    You can also set active or visible on their own, e.g. visible = 0 for
+    an invisible wall that still collides.
+    A removed sprite can't be enabled again.
+
+Chispita_remove(o)
+    Takes a sprite, text or map out of the game for good. It disappears
+    straight away and stops costing anything. Use it for things that are
+    finished: bullets that hit, collected coins, defeated enemies.
+      bullet.on_enter = function(me, other)
+        Chispita_remove(me)
+      end
+    The engine lets go of it at the end of Chispita_update, so it's safe to
+    call from inside events. The camera stops following it, and anything
+    riding it stops riding.
+    Disable vs remove: disable = "off for now, back later"; remove = "gone".
+
+SPRITE VARIABLES
+Every sprite has these. Read or change them whenever you like.
+
+Position and movement
+  x, y            center position
+  vx, vy          speed (units per second)
+  old_x, old_y    position before the last physics step (read only)
+  id              unique number (read only)
+  sprite_name     optional name you choose, shown in debug mode
+
+Size
+  width, height   (rects) drawn size
+  radius          (circles) drawn radius
+
+Physics
+  physics         1 = takes part in physics and collisions. 0 = picture only.
+  active          1 = updates. 0 = frozen and ignored.
+  fall            1 = pulled by gravity (platformer mode).
+  fixed           1 = never moves, nothing can push it (walls, floors).
+  kinematic       1 = moves by its own vx, vy, but ignores gravity and can't
+                  be pushed. Use it for moving platforms: sprites standing on
+                  it ride along.
+  solid           1 = gets pushed apart from other solid things.
+                  0 = passes through everything but still reports touches
+                  (pickups, trigger zones).
+  bounciness      0 to 1, default 0.3. A collision's bounce is the two
+                  bounciness values multiplied together.
+  mass            how heavy it is, default 1. When two things push each
+                  other, the heavier one moves less: a mass 10 crate barely
+                  moves when a mass 1 player walks into it. Must be above 0.
+  grip            0 to 1, default 0. How much it catches on surfaces it
+                  slides against. 0 = slides freely (ice), 1 = stops sliding
+                  almost straight away (rubber). Two touching things use the
+                  average of their grips. Grip does nothing between a
+                  moving platform and whatever rides it: riding and ground
+                  friction already keep riders in place. It matters for
+                  sliding along slopes, walls and other sprites.
+  friction        multiplies the chispita_friction setting for this sprite.
+                  Default 1. Lower = stops faster.
+  air_friction    multiplies the chispita_air_friction setting. Default 1.
+  drag            how much friction slows it down. 1 (default) = normal,
+                  0 = no friction at all (keeps its speed forever: bullets,
+                  thrown things), 0.5 = half as much slowing down.
+  life            seconds left before it's removed with Chispita_remove.
+                  0 (default) = lives forever. Counts down on game time, so
+                  it pauses and slows down with the game. Good for bullets,
+                  sparks and anything temporary:
+                    bullet.life = 2
+  grounded        1 if standing on something this frame (read only).
+  riding          the kinematic sprite it's standing on, or 0 (read only).
+  group           collision group name, default "default" (section 5).
+  one_way         1 = only blocks things landing on top of it.
+  drop_through    1 = falls through one-way platforms. Set it while the
+                  player holds DOWN, for example.
+
+Hit box (the body used for collisions)
+  hit_box_shape   "rect" or "circle" (set by how the sprite was made)
+  hit_width       hit box size (rects). Starts equal to width.
+  hit_height
+  hit_radius      hit box size (circles). Starts equal to radius.
+  hit_offset_x    moves the hit box away from the sprite's center
+  hit_offset_y
+  rotate_hit_box  1 (default) = a rect's hit box and hurt box turn with
+                  rotation, offsets included. 0 = the boxes stay upright
+                  even when the drawing turns (spinning decorations, a
+                  turret that uses Chispita_pointAt). Circles never need it.
+    A hit box a little smaller than the picture makes collisions feel
+    fairer. Use Chispita_setSize when you want everything to match.
+
+Hurt box (an attack area, like a sword swing; see section 5)
+  hurt_box        1 = on. Default 0.
+  hurt_box_shape  "rect" or "circle". Starts the same as the hit box.
+  hurt_width      hurt box size (rects)
+  hurt_height
+  hurt_radius     hurt box size (circles)
+  hurt_offset_x   moves the hurt box away from the center
+  hurt_offset_y
+
+Events (section 5)
+  trigger         1 = gets on_enter, callback, on_exit and on_tile events
+  on_enter        function(me, other)
+  callback        function(me, other)
+  on_exit         function(me, other)
+  on_tile         function(me, tile)
+  on_hurt         function(me, other)  (needs hurt_box, not trigger)
+  on_hit          function(me, other)  (solid bumps, no trigger needed)
+
+Drawing
+  visible         1 = drawn
+  layer           draw layer (change it with Chispita_setLayer, section 7)
+  color           fill color for plain shapes
+  fill            "fill" = solid shape, anything else = outline only
+  alpha           0 to 1 see-through-ness, default 1
+  image           sprite editor image name, or 0 for a plain shape
+  image_part      0, or an object with x, y, w, h (pixels) to draw only part
+                  of the image. Set for you by tiles and sprite sheets.
+  flip_x          1 = mirrored left-right (face the other way)
+  flip_y          1 = mirrored upside down
+  rotation        degrees. Turns the drawing, and the hit box too unless
+                  rotate_hit_box = 0.
+  parallax        1 = moves with the camera. Lower = scrolls slower.
+  ui              1 = ignores the camera (stays fixed on screen)
+
+Animation
+  sheet             the sprite sheet in use, or 0
+  animation         name of the animation playing, or 0 (read only)
+  frame             position in the current animation (read only)
+  animation_speed   1 = normal, 2 = twice as fast, 0.5 = half speed
+  animation_done    1 once a play-once animation reaches its last frame
+  on_animation_end  function(me, name), called at the end of each run
+  animations        only without a sheet: names mapped to separate images
+
+TEXT
+
+Chispita_addText(text, x, y, size, color)
+    Puts text on screen and returns a text object.
+      text      the string to show
+      x, y      center position
+      size      optional, default 10
+      color     optional, default "rgb(255,255,255)"
+
+Text variables:
+  text        the string shown. Change it any time:
+                score_text.text = "Score: " + score
+  x, y        center position
+  size        text height
+  color       text color
+  font        font name, default "BitCell" (any microStudio font)
+  active      on/off
+  visible     on/off
+  layer       draw layer, default 3
+  parallax    1 = moves with the camera
+  ui          1 = fixed on screen. Use it for scores, health and menus.
+
+PARTICLES
+
+Chispita_burst(x, y, count, color, speed, life, size)
+    Sprays dots out from a point in every direction. They fade and switch
+    off.
+      x, y      where they start
+      count     optional, how many, default 10
+      color     optional, default "rgb(255,255,255)"
+      speed     optional, how fast they fly out, default 60. Each dot gets
+                between half and all of this speed.
+      life      optional, seconds they last, default 0.5
+      size      optional, dot size, default 2
+    Example:
+      Chispita_burst(coin.x, coin.y, 16, "rgb(255,230,0)")
+    Particles draw on layer 2. Set chispita_particle_gravity to make them fall.
+    Passing 0 for count, speed, life or size uses the default instead.
+
+SPRITE SHEETS AND ANIMATION
+
+A sprite sheet is ONE image holding a grid of same-size frames. Import the
+whole sheet into the sprite editor as one sprite.
+
+Frames are numbered left to right, top to bottom, starting at 0. Rows and
+columns start at 0 too, with row 0 at the top:
+
+    column:  0    1    2    3
+           +----+----+----+----+
+    row 0  |  0 |  1 |  2 |  3 |
+           +----+----+----+----+
+    row 1  |  4 |  5 |  6 |  7 |
+           +----+----+----+----+
+
+Chispita_addSheet(image, frame_width, frame_height)
+    Cuts an image into frames and returns the sheet.
+      image          sprite name of the whole sheet
+      frame_width    width of one frame in pixels
+      frame_height   optional. Defaults to frame_width.
+
+Chispita_addAnimation(sheet, name, row, first, count, fps, once)
+    Adds an animation from frames next to each other in one row.
+      name     what you'll call it, e.g. "run"
+      row      which row (0 = top)
+      first    column of the first frame (0 = left)
+      count    how many frames
+      fps      optional, frames per second, default 8
+      once     optional. 1 = play once and stop on the last frame
+               (attacks, deaths). Left out = loop forever.
+
+Chispita_addAnimationFrames(sheet, name, frames, fps, once)
+    Adds an animation from any frames in any order:
+      Chispita_addAnimationFrames(hero_sheet, "walk", [4, 5, 6, 5], 8)
+
+Chispita_addSprite(sheet, x, y, width, height, physics)
+    Pass a sheet instead of an image name to make an animated sprite.
+    width and height default to one frame's size.
+
+Chispita_useSheet(sprite, sheet)
+    Gives an existing sprite a sheet. It shows frame 0 until you play an
+    animation.
+
+Chispita_play(sprite, name, restart)
+    Starts an animation.
+      restart   optional. 1 = start over even if it's already playing.
+    Playing the animation that's already playing does nothing, so it's
+    fine to call it every frame.
+
+Example: a 16x16 character with idle, run and attack rows
+
+    hero_sheet = Chispita_addSheet("hero_sheet", 16, 16)
+    Chispita_addAnimation(hero_sheet, "idle", 0, 0, 4, 6)
+    Chispita_addAnimation(hero_sheet, "run", 1, 0, 6, 12)
+    Chispita_addAnimation(hero_sheet, "attack", 2, 0, 3, 15, 1)
+
+    player = Chispita_addSprite(hero_sheet, 0, 0)
+    player.hit_width = 10
+    Chispita_play(player, "idle")
+
+    player.on_animation_end = function(me, name)
+      if name == "attack" then Chispita_play(me, "idle") end
+    end
+
+    // in update:
+    if abs(player.vx) > 10 then
+      Chispita_play(player, "run")
+    else
+      Chispita_play(player, "idle")
+    end
+    if player.vx < 0 then player.flip_x = 1 end
+    if player.vx > 0 then player.flip_x = 0 end
+
+Make each sheet once and share it. Every sprite on a sheet keeps its own
+timing, so a row of enemies won't all step together.
+
+Without a sheet, Chispita_play also works with separate images:
+    hero.animations.idle = "hero_idle"
+    hero.animations.run = "hero_run"
+    Chispita_play(hero, "run")
+
+
+--------------------------------------------------------------------------------
+5. COLLISIONS AND EVENTS
+--------------------------------------------------------------------------------
+
+Collisions are automatic for every active sprite with physics = 1:
+rect-rect, circle-circle, rect-circle, and every sprite against solid map
+tiles. Things that touch get pushed apart and bounce. Rect hit boxes turn
+with the sprite's rotation, so a tilted plank collides as a tilted plank.
+
+How hard things push back depends on mass: the heavier sprite moves less
+and keeps more of its speed. How they slide depends on grip: with grip 0
+(the default) things slide along each other freely; with grip, sliding
+slows down while they touch.
+
+    crate.mass = 5          // heavy: the player pushes it slowly
+    ball.grip = 0.8         // rubber: stops sliding along the floor
+    floor.grip = 0.1        // a little rough
+
+Fast sprites don't pass through walls: when something moves far in one
+frame, the engine splits the frame into extra steps on its own (up to
+chispita_max_substeps).
+
+  Floors and walls      fixed = 1
+  Moving platforms      kinematic = 1, then give them a vx or vy
+  Pickups and zones     solid = 0, trigger = 1, usually fixed = 1 too
+  One-way platforms     one_way = 1 (and drop_through on the player)
+
+Don't rotate one-way platforms. A tilted one-way platform still acts like a
+flat one at the height of its highest corner, so things float above its
+low end. Keep them level, or use a normal solid sprite for slopes.
+
+GROUPS
+
+Chispita_ignore(group_a, group_b)
+    Sprites in these two groups pass through each other (both ways). The
+    groups can be the same:
+      Chispita_ignore("enemy", "enemy")
+
+Chispita_ignoreHurt(group_a, group_b)
+    Hurt boxes of one group can't hurt the other (both ways). No friendly
+    fire:
+      Chispita_ignoreHurt("player", "player")
+
+QUESTIONS
+
+Chispita_overlaps(a, b)
+    1 if the hit boxes of a and b overlap right now, else 0.
+    Two things resting against each other count as just touching, not
+    overlapping, but the small chispita_collision_slop overlap may count.
+
+Chispita_pointIn(sprite, x, y)
+    1 if the world point x, y is inside the sprite's hit box. Handy for
+    clicks:
+      p = Chispita_screenToWorld(mouse.x, mouse.y)
+      if Chispita_pointIn(button, p.x, p.y) then ... end
+
+Chispita_raycast(x1, y1, x2, y2, ignore)
+    Draws an invisible line from point 1 to point 2 and finds the first
+    solid thing on it: a solid sprite or a solid map tile. Triggers,
+    physics_off sprites, hollow tiles and one-way tiles are ignored.
+      ignore    optional, a sprite to skip (usually the one looking)
+    Returns 0 if nothing is in the way, otherwise an object with:
+      x, y        where the line first hits
+      distance    how far along the line that is
+      sprite      the sprite it hit, or 0
+      tile        the tile it hit (see TILES below), or 0
+
+    Can the enemy see the player?
+      hit = Chispita_raycast(enemy.x, enemy.y, player.x, player.y, enemy)
+      if hit and hit.sprite == player then
+        Chispita_moveToward(enemy, player.x, player.y, 40)
+      end
+
+    Is there floor just ahead of an enemy?
+      ground = Chispita_raycast(enemy.x + 10, enemy.y, enemy.x + 10, enemy.y - 20)
+      if not ground then enemy.vx = -enemy.vx end
+
+    An instant laser:
+      hit = Chispita_raycast(player.x, player.y, player.x + 300, player.y, player)
+      if hit and hit.sprite then Chispita_remove(hit.sprite) end
+
+EVENTS
+Set trigger = 1, then give the sprite any of these functions. me is the
+sprite itself, other is what it touched.
+
+    coin.fixed = 1
+    coin.solid = 0
+    coin.trigger = 1
+    coin.on_enter = function(me, other)
+      if other != player then return end
+      score += 1
+      Chispita_disable(me)
+    end
+
+  on_enter(me, other)   once, when they start touching
+  callback(me, other)   every frame while they touch
+  on_exit(me, other)    once, when they stop touching (also when the other
+                        one gets disabled)
+  on_tile(me, tile)     every frame while touching a solid or one-way map
+                        tile, once per tile
+
+HITS (no trigger needed)
+on_hit is for solid things bumping into each other: the player running into
+an enemy, a ball hitting a crate. It works on normal solid sprites, without
+trigger.
+
+    player.on_hit = function(me, other)
+      if other.group == "enemy" then health -= 1 end
+    end
+
+  on_hit(me, other)     once, when two solid sprites first bump into each
+                        other. Fires again only after they separate and
+                        touch again. Doesn't fire for triggers, one-way
+                        platforms or map tiles (use on_tile for tiles).
+
+Changing your own variables inside an event (score += 1) changes the real
+ones. Events fire at the end of Chispita_update, after all movement, so it's
+safe to disable or move things inside them.
+
+HURT BOXES
+A hurt box is an attack area separate from the body: a sword swing, a
+stomp, an explosion.
+
+    player.hurt_width = 30
+    player.hurt_height = 12
+    player.on_hurt = function(me, other)
+      other.vy = 200
+    end
+
+    // in update:
+    player.hurt_box = keyboard.X
+
+  on_hurt(me, other)    once per target per swing: when the hurt box first
+                        reaches other's hit box. Holding the hurt box on
+                        won't hit the same target again; switch hurt_box off
+                        and on for the next swing. Needs hurt_box = 1, not
+                        trigger.
+
+TILES
+The tile object passed to on_tile and map callbacks has:
+  map       the map object
+  cell      the cell value, e.g. "spikes" or "sheet:2,3"
+  name      the cell name without tile sheet coordinates, e.g. "sheet"
+  cx, cy    cell position in the map grid (0, 0 is bottom-left)
+  x, y      world position of the tile's center
+
+
+--------------------------------------------------------------------------------
+6. MAPS
+--------------------------------------------------------------------------------
+
+Make maps in microStudio's map editor, then add them with Chispita_addMap.
+In a solid map every filled cell is a solid block unless you say otherwise.
+
+Chispita_addMap(name, x, y, physics, cell_size)
+    Adds a map and returns a map object.
+      name        map name from the map editor, e.g. "level1"
+      x, y        center of the map in the world
+      physics     optional. Left out or physics_on = tiles are solid (a
+                  level). physics_off = draw only (a background).
+      cell_size   optional. World width of one cell. Defaults to the map's
+                  block width in pixels. Height keeps the block proportions.
+
+      level = Chispita_addMap("level1", 0, 0)
+      sky = Chispita_addMap("sky", 0, 0, physics_off)
+      sky.parallax = 0.5
+
+    Solid maps draw on layer 0, background maps on layer -1 (behind).
+
+Chispita_setHollow(map, tile_name)
+    Tiles with this name don't collide (grass, decorations).
+
+Chispita_setOneWay(map, tile_name)
+    Tiles with this name are one-way platforms: jump up through them and
+    land on top. Sprites with drop_through = 1 fall through.
+
+Chispita_setSolid(map, tile_name)
+    Tiles with this name are solid again (the default).
+
+    tile_name is the name without tile sheet coordinates, so
+    Chispita_setHollow(level, "sheet") affects every tile from "sheet".
+
+Chispita_cellAt(map, x, y)
+    The cell value at world point x, y, or 0 if empty or outside the map.
+    Good for checking what's ahead:
+      if not Chispita_cellAt(level, enemy.x + 10, enemy.y - 20) then
+        enemy.vx = -enemy.vx   // no floor ahead, turn around
+      end
+
+Chispita_spawnFromMap(map, tile_name)
+    Removes every tile with this name from the map and puts a sprite in its
+    place. Returns the list of new sprites. Great for placing coins and
+    enemies in the map editor.
+      tile_name   just the name ("coin") or a full cell value ("sheet:2,3")
+    The original map is never changed; Chispita works on a copy.
+    The new sprites are normal rects with physics on, so in platformer mode
+    they fall unless you set fixed = 1 (or fall = 0):
+
+      coins = Chispita_spawnFromMap(level, "coin")
+      for c in coins
+        c.fixed = 1
+        c.solid = 0
+        c.trigger = 1
+      end
+
+Map variables
+  name        map name
+  map         the microStudio map being used (a copy after spawnFromMap)
+  x, y        center position in the world
+  cell_size   world width of one cell
+  physics     1 = tiles collide, 0 = draw only
+  active      0 = tiles stop colliding
+  visible     0 = not drawn
+  layer       draw layer (change it with Chispita_setLayer)
+  parallax    1 = moves with the camera. 0.5 = half speed (far away).
+              0 = never moves.
+  ui          1 = ignores the camera
+  bounciness  bounce of every tile, default 0.3
+  grip        grip of every tile, default 0 (see section 5)
+  callback    function(sprite, tile), called when any sprite touches a
+              solid or one-way tile (the sprite doesn't need trigger)
+
+Changing tiles while the game runs (level.map.set(cx, cy, "wall") and then
+level.map.update()) works straight away.
+
+
+--------------------------------------------------------------------------------
+7. CAMERA AND DRAWING LAYERS
+--------------------------------------------------------------------------------
+
+THE CAMERA OBJECT
+  Camera.x, Camera.y   the point the camera looks at
+  Camera.target        sprite to follow, or 0
+  Camera.smooth        1 = snaps to the target. Lower = glides after it
+                       (0.1 is smooth, 0.03 is very lazy).
+  Camera.zoom          1 = normal, 2 = everything twice as big
+  Camera.bounds        0, or the limits set by the functions below.
+                       Set it to 0 to remove them.
+  Camera.deadzone_x    0 = always follows. Above 0 = a box (this many units
+  Camera.deadzone_y    either side of the center) the target can move
+                       around in without the camera moving. The camera only
+                       moves once the target reaches the edge of the box.
+                       Stops small hops from bobbing the whole screen:
+                         Camera.deadzone_y = 20
+  Camera.look_ahead_x  seconds to look ahead of the target, based on its
+  Camera.look_ahead_y  speed, so you see more of where you're going:
+                         Camera.look_ahead_x = 0.3
+                       0 = off (the default). look_ahead_y is usually best
+                       left at 0 in a platformer, because jumps change vy a
+                       lot.
+  Camera.shake_fade    1 (default) = shakes start strong and fade out.
+                       0 = same strength the whole time, then stop.
+
+Chispita_setTarget(sprite)
+    The camera follows this sprite. Pass 0 to stop following.
+
+Chispita_cameraShake(amount, seconds)
+    Shakes the screen, fading out over the time (see Camera.shake_fade).
+      amount    how far it shakes at the start, e.g. 2
+      seconds   how long, e.g. 0.2
+
+Chispita_setCameraBounds(left, bottom, right, top)
+    Keeps the view inside this area of the world. If the area is smaller
+    than the screen, the camera centers on it.
+
+Chispita_limitCameraToMap(map)
+    The same, using the edges of a map, so you never see past the level.
+
+Chispita_screenToWorld(x, y)
+    Turns a screen position (like mouse.x, mouse.y) into a world position,
+    after camera movement and zoom. Returns an object with x and y.
+
+Chispita_worldToScreen(x, y)
+    Turns a world position into a screen position. Returns x and y.
+
+DRAWING LAYERS
+Everything is drawn from the lowest layer up, so higher layers appear in
+front. Things on the same layer draw in the order they were made.
+
+  -1  background maps
+   0  solid maps
+   1  sprites
+   2  particles
+   3  text
+
+Chispita_setLayer(o, layer)
+    Moves a sprite, text or map to another layer:
+      Chispita_setLayer(ghost, -2)    // behind even the background
+    Always use this rather than changing o.layer yourself.
+
+Two more drawing variables on sprites, text and maps:
+  parallax   how much it moves with the camera: 1 = normal, 0.5 = half
+             (looks far away), 0 = never moves
+  ui         1 = ignores the camera completely (scores, menus)
+
+
+--------------------------------------------------------------------------------
+8. TIMERS AND TIME
+--------------------------------------------------------------------------------
+
+TIMERS AND TWEENS
+These three give back a handle you can pass to Chispita_cancel. They run on
+game time, so they slow down with chispita_time_scale and stop while paused.
+
+Chispita_after(seconds, action)
+    Runs action once, later:
+      Chispita_after(2, function() Chispita_enable(coin) end)
+
+Chispita_every(seconds, action)
+    Runs action again and again:
+      Chispita_every(2, function() lift.vx = -lift.vx end)
+
+Chispita_tween(o, field, to_value, seconds, ease)
+    Slides a number on an object to a new value over time.
+      o          any object (sprite, text, map, Camera, ...)
+      field      the variable's name as a string, e.g. "y" or "alpha"
+      to_value   the value to end on
+      seconds    how long it takes (0 = jump straight there)
+      ease       optional. "linear" (default, steady) or "smooth" (starts
+                 and ends gently)
+      Chispita_tween(door, "y", 60, 1, "smooth")
+      Chispita_tween(Camera, "zoom", 2, 0.5)
+
+Chispita_cancel(handle)
+    Stops a timer or tween early. Safe to call on one that already
+    finished:
+      blink = Chispita_every(0.2, function() player.visible = not player.visible end)
+      ...
+      Chispita_cancel(blink)
+
+Changing your own variables inside a timer (score = 0) changes the real
+ones.
+
+GAME TIME
+microStudio runs update 60 times a second, so one frame is normally 1/60 of
+a second. These keep your own code in step with the engine.
+
+Chispita_deltaTime()
+    Seconds the game moved forward last frame. Normally 1/60, times
+    chispita_time_scale, and 0 while debug mode has the game paused:
+      cooldown -= Chispita_deltaTime()
+
+Chispita_perSecond(amount)
+    Shortcut for amount * Chispita_deltaTime():
+      enemy.x += Chispita_perSecond(40)     // 40 units every second
+
+Chispita_gameTime()
+    Total seconds of game time. Stops while paused and slows with
+    chispita_time_scale. Good for wobbles and blinking:
+      ghost.alpha = 0.5 + sin(Chispita_gameTime() * 4) * 0.5
+
+Slow motion example:
+    if keyboard.press.B then
+      chispita_time_scale = 0.3
+      Chispita_after(0.6, function() chispita_time_scale = 1 end)
+    end
+  (Timers run on game time, so 0.6 seconds of slow motion lasts 2 real
+  seconds.)
+
+
+--------------------------------------------------------------------------------
+9. DEBUG MODE
+--------------------------------------------------------------------------------
+
+Turn it on with chispita_debug_mode = 1, or from a key:
+
+    if keyboard.press.D then Chispita_toggleDebug() end
+
+Chispita_toggleDebug(name)
+    No name: turns debug mode on or off.
+    With a name: flips one tool, e.g. Chispita_toggleDebug("velocity").
+
+Chispita_watch(label, value)
+    Shows a value of your own in the info panel. Call it every frame (in
+    update) so it stays current:
+      Chispita_watch("score", score)
+      Chispita_watch("state", enemy.state)
+
+THE PANEL
+A panel in the top-right corner lists every tool with a checkbox. Click a
+row to switch it on or off. Click the "DEBUG" title to fold the panel away.
+
+THE TOOLS
+Each tool is also a switch in the Debug object, so you can set them in code
+(Debug.velocity = 1). Default in brackets.
+
+  Grid         [on]   World grid every Debug.grid_size units (default 32).
+                      The green line is x = 0, the red line is y = 0.
+  Hit boxes    [on]   The boxes physics really uses:
+                        green  = moves normally
+                        blue   = fixed or kinematic
+                        yellow = not solid (triggers, pickups)
+  Hurt boxes   [on]   Red outlines of hurt boxes.
+  Velocity     [off]  Pink line to where each sprite will be in 0.1 seconds.
+  Contacts     [off]  White bar under grounded sprites, and lines from
+                      triggers to whatever they're touching.
+  Labels       [off]  "#id name" above each sprite (name = sprite_name).
+  Map cells    [off]  Solid tiles in orange, one-way tiles with a cyan top
+                      line. Hollow tiles show nothing.
+  Camera       [off]  Camera bounds (pink box), view center and target line.
+  Mouse        [on]   Crosshair, the mouse's world position, and the tile
+                      under it on each solid map. Hovering over a sprite
+                      shows an inspector in the bottom-left corner
+                      (position, speed, mass, grip, flags...).
+  Info         [on]   Top-left: FPS, mode, gravity, substeps, counts,
+                      camera, and your watched values.
+  Drag         [on]   Click and hold a sprite to move it. Let go while
+                      moving to throw it.
+  Slow motion  [off]  Runs one frame in every Debug.slow_factor (default 4).
+  Paused       [off]  Freezes the game. Drawing, the inspector and dragging
+                      still work.
+  Step frame          Pauses and runs exactly one frame per click.
+
+Other Debug switches:
+  Debug.panel         0 hides the panel (the tools keep working)
+  Debug.panel_open    0 = panel folded
+  Debug.grid_size     grid spacing
+  Debug.slow_factor   how much slow motion slows things down
+
+DEBUGGING TIPS
+  - Something won't collide? Turn on hit boxes. No box means physics = 0 or
+    active = 0. Yellow means solid = 0.
+  - Falls through the floor? Use Step frame and watch the velocity line. If
+    it's longer than the floor is thick, raise chispita_substeps.
+  - Jump not working? Turn on Contacts. No white bar means grounded is 0.
+  - Wrong tile solid? Turn on Map cells, hover with the mouse to see the
+    tile's name, then use Chispita_setHollow on that name.
+
+
+--------------------------------------------------------------------------------
+10. HELPERS
+--------------------------------------------------------------------------------
+
+Math helpers for your own game code. The engine doesn't need them, so the
+chispita_helpers file can be left out if you don't use them.
+
+Angles are in degrees and follow the screen:
+
+           90 (up)
+            |
+  180 ------+------ 0 (right)
+            |
+          270 (down)
+
+Functions that return a vector give back an object with x and y:
+    v = Chispita_angleToVector(45, 100)
+    print(v.x + ", " + v.y)
+
+Distance and angles
+  Chispita_distance(x1, y1, x2, y2)
+      Distance between two points.
+  Chispita_distanceBetween(a, b)
+      Distance between the centers of two objects:
+        if Chispita_distanceBetween(enemy, player) < 50 then ... end
+  Chispita_angle(x1, y1, x2, y2)
+      Angle from point 1 toward point 2.
+  Chispita_angleBetween(a, b)
+      Angle from object a toward object b.
+  Chispita_angleDifference(from_angle, to_angle)
+      The shortest turn between two angles, from -180 to 180. Positive =
+      turn left, negative = turn right. Good for turrets that turn a little
+      each frame.
+
+Vectors
+  Chispita_vector(x, y)
+      Makes a vector object.
+  Chispita_angleToVector(angle, length)
+      A vector pointing at the angle. length is optional (default 1); use a
+      speed to get a velocity. (A length of 0 also gives 1.)
+  Chispita_vectorToAngle(x, y)
+      The angle a vector points at.
+  Chispita_vectorLength(x, y)
+      How long a vector is (for a velocity, that's the speed).
+  Chispita_normalize(x, y)
+      Same direction, length 1. A zero vector stays zero.
+
+Movement
+  Chispita_moveAtAngle(sprite, angle, speed)
+      Sets vx and vy so the sprite moves at that angle and speed. Speed 0
+      stops it.
+        bullet = Chispita_addCircle(player.x, player.y, 2)
+        bullet.fall = 0
+        Chispita_moveAtAngle(bullet, 30, 200)
+  Chispita_moveToward(sprite, x, y, speed)
+      Sets vx and vy so the sprite heads straight for a point.
+        Chispita_moveToward(enemy, player.x, player.y, 40)
+  Chispita_approach(value, target, step)
+      Moves a value toward a target by step, without going past it. Good
+      for speeding up and slowing down smoothly:
+        player.vx = Chispita_approach(player.vx, 100, 10)
+  Chispita_pointAt(sprite, x, y)
+      Turns the sprite's drawing (rotation) to face a point.
+
+Numbers
+  Chispita_clamp(value, low, high)
+      Keeps a value between low and high:
+        health = Chispita_clamp(health, 0, 100)
+  Chispita_lerp(a, b, t)
+      Blends from a to b. t = 0 gives a, t = 1 gives b, 0.5 is halfway.
+  Chispita_sign(n)
+      1 for positive numbers, -1 for negative, 0 for zero.
+  Chispita_wrap(value, low, high)
+      Wraps around, like leaving one side of the screen and coming back on
+      the other:
+        ship.x = Chispita_wrap(ship.x, -screen.width / 2, screen.width / 2)
+
+Random
+  Chispita_randomRange(low, high)
+      A random decimal number between low and high.
+  Chispita_randomInt(low, high)
+      A random whole number from low to high, both included:
+        dice = Chispita_randomInt(1, 6)
+  Chispita_chance(percent)
+      1 that percent of the time, otherwise 0:
+        if Chispita_chance(10) then Chispita_burst(x, y) end
+
+
+--------------------------------------------------------------------------------
+11. TIPS AND GOTCHAS
+--------------------------------------------------------------------------------
+
+  - Call Chispita_update at the END of your update, after your own code.
+  - Check grounded before allowing a jump.
+  - The engine adds physics steps on its own for fast sprites. If
+    something still slips through a wall, it's moving faster than
+    chispita_max_substeps can catch: raise it, or make the wall thicker.
+  - Rotated hit boxes follow the drawing. If a rotated sprite's debug
+    outline doesn't line up with its picture, tell whoever maintains the
+    engine: it means microStudio turns drawings the other way round.
+  - Use Chispita_remove for things that are finished (bullets, collected
+    coins). Disabled things still take up space in the engine's lists.
+  - A bullet that flies straight and cleans itself up:
+      bullet = Chispita_addCircle(player.x + 9, player.y, 2)
+      bullet.fall = 0         // no gravity
+      bullet.drag = 0         // no friction, keeps its speed
+      bullet.life = 2         // gone after 2 seconds if it hits nothing
+      bullet.vx = 250
+  - Changing width or radius only changes the drawing. Use Chispita_setSize
+    or Chispita_setRadius to change the hit box too.
+  - Disabled things keep their place in the engine's lists, so enabling
+    them again is instant. To really start over, use Chispita_init.
+  - microScript words like to, by, in, for, end, after and every can't be
+    used as variable names. A file that does stops loading at that line,
+    and everything after it is missing.
+  - Riding a moving platform moves the player, but doesn't change
+    player.vx. If you want a jump to carry the platform's speed, add it
+    yourself:
+      if keyboard.press.UP and player.grounded then
+        player.vy = 220
+        if player.riding then player.vx += player.riding.vx end
+      end
+  - Debug mode is the quickest way to see why something isn't working.
+    See the tips in section 9.
+
+================================================================================

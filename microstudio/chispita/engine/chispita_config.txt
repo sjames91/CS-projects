@@ -1,0 +1,29 @@
+chispita_config = function()
+  // World
+  chispita_mode = "topdown"          // "topdown" or "platformer"
+  chispita_gravity = 500             // platformer only, units per second squared
+  chispita_friction = 0.85           // speed kept each frame (on the ground in platformer)
+  chispita_air_friction = 0.95       // speed kept each frame in the air (platformer)
+  chispita_rest_speed = 30           // slower than this, a landing stops instead of bouncing
+
+  // Time
+  chispita_substeps = 1              // raise it if fast sprites pass through walls
+  chispita_max_substeps = 8
+  chispita_time_scale = 1            // 1 = normal, 0.5 = slow motion, 0 = frozen
+
+  // Collisions
+  chispita_collision_passes = 3      // more = steadier stacks, but more work
+  chispita_collision_slop = 0.1      // overlap allowed to stay (stops shivering)
+  chispita_collision_push = 0.8      // how much of the rest gets pushed out each pass
+
+  // Particles
+  chispita_particle_gravity = 0      // units per second squared, pulls particles down
+
+  // Drawing
+  chispita_background = "rgb(0,0,0)"
+
+  // Debug
+  chispita_debug_mode = 0
+end
+
+chispita_config()

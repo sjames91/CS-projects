@@ -1,0 +1,138 @@
+chispita_warned = object end
+
+chispita_warn = function(message)
+  if chispita_warned[message] then return end
+  chispita_warned[message] = 1
+  print("Chispita: " + message)
+end
+
+Chispita_init = function()
+  chispita_config()
+
+  // Sprites, text, maps and particles
+  chispita_sprites = []
+  chispita_maps = []
+  chispita_drawables = []
+  chispita_particles = []
+  chispita_particle_layer = 0      // made again by the next burst
+  chispita_remove_queue = []
+
+  // Collision group rules
+  chispita_ignored = object end
+  chispita_hurt_ignored = object end
+  chispita_any_ignored = 0
+  chispita_any_hurt_ignored = 0
+
+  // Timers
+  chispita_timers = []
+  chispita_dt = 1 / 60
+  chispita_time = 0
+
+  // Camera
+  Camera.x = 0
+  Camera.y = 0
+  Camera.target = 0
+  Camera.smooth = 1
+  Camera.zoom = 1
+  Camera.bounds = 0
+  Camera.deadzone_x = 0
+  Camera.deadzone_y = 0
+  Camera.look_ahead_x = 0
+  Camera.look_ahead_y = 0
+  Camera.shake_amount = 0
+  Camera.shake_time = 0
+  Camera.shake_total = 0
+  Camera.shake_fade = 1
+  chispita_paused = 0
+  Camera.shake_x = 0
+  Camera.shake_y = 0
+
+  chispita_debug_reset()
+end
+
+chispita_needed_substeps = function(dt)
+  local fastest = 0
+  local thinnest = 0
+  for s in chispita_sprites
+    if not (s.active and s.physics and s.solid) then continue end
+    local half = 0
+    if s.hit_box_shape == "circle" then
+      half = s.hit_radius
+    else
+      half = min(s.hit_width, s.hit_height) / 2
+    end
+    if half > 0 and (thinnest == 0 or half < thinnest) then thinnest = half end
+    if not s.fixed then
+      local move = max(abs(s.vx), abs(s.vy)) * dt
+      if move > fastest then fastest = move end
+    end
+  end
+  for m in chispita_maps
+    if not (m.map and m.physics and m.active) then continue end
+    local l = chispita_map_layout(m)
+    local half = min(l.cw, l.ch) / 2
+    if half > 0 and (thinnest == 0 or half < thinnest) then thinnest = half end
+  end
+  if thinnest <= 0 then return 1 end
+  return ceil(fastest / thinnest)
+end
+
+Chispita_update = function(dt)
+  if not dt then dt = 1 / 60 end
+  if chispita_debug_mode then
+    chispita_debug_update()
+    if not chispita_debug_should_step() then
+      chispita_dt = 0
+      return
+    end
+  end
+  if chispita_paused then
+    chispita_dt = 0
+    chispita_update_timers(dt, 1)
+    chispita_purge_removed()
+    return
+  end
+  dt *= chispita_time_scale
+  chispita_dt = dt
+  chispita_time += dt
+  chispita_begin_frame()
+  chispita_check_sprite_fields()
+
+  local steps = max(chispita_substeps, chispita_needed_substeps(dt))
+  steps = max(1, min(steps, max(chispita_substeps, chispita_max_substeps)))
+  chispita_step_passes = max(1, ceil(chispita_collision_passes / steps))
+  local step = dt / steps
+  for i = 1 to steps by 1
+    chispita_move_sprites(step)
+    chispita_check_collisions()
+    chispita_check_map_collisions()
+  end
+
+  chispita_apply_friction(dt)
+  chispita_fire_contact_events()
+  chispita_check_hurt_boxes()
+  chispita_update_timers(dt)
+  chispita_update_particles(dt)
+  chispita_update_animations(dt)
+  chispita_update_lifetimes(dt)
+  chispita_camera_update(dt)
+  chispita_purge_removed()
+end
+
+Chispita_draw = function()
+  chispita_draw_all()
+end
+
+chispita_paused = 0
+
+Chispita_pause = function()
+  chispita_paused = 1
+end
+
+Chispita_resume = function()
+  chispita_paused = 0
+end
+
+Chispita_isPaused = function()
+  return chispita_paused
+end

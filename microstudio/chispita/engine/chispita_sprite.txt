@@ -1,0 +1,720 @@
+chispita_sprites = []
+chispita_next_id = 1
+physics_on = "on"
+physics_off = "off"
+
+  // Create a new sprite.
+chispita_new_sprite = function(x,y,shape,physics)
+  
+  // Basic sprite variables
+  local s = object end
+  s.id = chispita_next_id
+  chispita_next_id += 1
+  s.sprite_name = 0
+  s.x = x
+  s.y = y
+  s.old_x = x
+  s.old_y = y
+  s.vx = 0
+  s.vy = 0
+  
+  // Sprite physics variables
+  s.active = 1
+  s.physics = 1
+  s.fall = 1
+  s.fixed = 0
+  s.kinematic = 0
+  s.solid = 1
+  s.bounciness = 0.3
+  s.friction = 1
+  s.air_friction = 1
+  s.grounded = 0
+  s.riding = 0
+  s.group = "default"
+  s.one_way = 0
+  s.drop_through = 0
+  s.mass = 1
+  s.grip = 0
+  s.rotate_hit_box = 1
+  s.drag = 1
+  s.life = 0
+  
+  // Sprite hit box variables
+  s.hit_box_shape = shape
+  s.hit_offset_x = 0
+  s.hit_offset_y = 0
+  
+  // Sprite hurt box variables
+  s.hurt_box = 0
+  s.hurt_box_shape = shape
+  s.hurt_offset_x = 0
+  s.hurt_offset_y = 0
+  
+  //Hit and hurt boxes only make collision object once not every frame.
+  s.hit_shape = object end
+  s.hurt_shape = object end
+  
+  //Sprite triggers
+  s.trigger = 0
+  s.was_trigger = 0
+  s.callback = 0  //every frame while touching: callback(self, other)
+  s.on_enter = 0  // first frame touching
+  s.on_exit = 0   // first frame after touching
+  s.on_tile = 0   // touching a map tile: on_tile(self, tile)
+  s.on_hurt = 0   //hurt box reached another sprite: on_hurt(self, other)
+  s.contacts = object end
+  s.old_contacts = object end
+  s.tile_contacts = object end
+  s.tile_touched = 0
+  s.hurting = object end
+  s.on_hit = 0
+  s.hits = object end
+  s.old_hits = object end
+  
+  //Sprite draw variables
+  s.visible = 1
+  s.layer = 1
+  s.parallax = 1
+  s.ui = 0
+  s.fill = "fill"
+  s.color = "rgb(255,255,255)"
+  s.alpha = 1
+  s.image = 0                   // name of a sprite from the sprite editor
+  s.image_part = 0              // part of the image to draw (x, y, w, h in pixels), for tile sheets
+  s.animations = object end     // name -> separate image, when not using a sheet
+  s.animation = 0               // name of the animation playing, or 0
+  s.sheet = 0                   // sprite sheet from Chispita.addSheet
+  s.frame = 0                   // position in the current animation
+  s.frame_time = 0
+  s.animation_speed = 1         // 2 plays twice as fast, 0.5 half speed
+  s.animation_done = 0          // 1 once a play-once animation has finished
+  s.on_animation_end = 0        // function(self, name), at the end of each run
+  s.flip_x = 0
+  s.flip_y = 0
+  s.rotation = 0                // degrees, only changes the drawing
+  
+  if physics and physics != physics_on and physics != physics_off then
+    chispita_warn("physics should be physics_on or physics_off, not " + physics + ". Using physics_on.")
+  end
+
+  // Physics off
+  if physics == physics_off then
+    s.physics = 0
+    s.fall = 0
+    s.fixed = 1
+    s.solid = 0
+    s.bounciness = 0
+  end
+  
+  //Draw sprites
+  s.draw = function()
+    chispita_draw_sprite(this)
+  end
+  
+  if not chispita_sprite_fields then
+    chispita_sprite_fields = object end
+    for key in s
+      chispita_sprite_fields[key] = 1
+    end
+    for key in ["width", "height", "radius", "hit_width", "hit_height", "hit_radius", "hurt_width", "hurt_height", "hurt_radius", "removed", "left", "right", "top", "bottom", "was_hurting"]
+      chispita_sprite_fields[key] = 1
+    end
+  end
+
+  chispita_sprites.push(s)
+  chispita_add_drawable(s)
+  return s
+end
+
+chispita_sprite_fields = 0
+chispita_field_verdicts = object end
+chispita_field_check_index = 0
+
+chispita_close_name = function(a, b)
+  if a.length < 4 or b.length < 4 then return 0 end
+  local limit = 2
+  if b.length < 5 then limit = 1 end
+  if abs(a.length - b.length) > limit then return 0 end
+  local previous = []
+  for j = 0 to b.length by 1
+    previous.push(j)
+  end
+  for i = 1 to a.length by 1
+    local current = [i]
+    local letter = a.substring(i - 1, i)
+    for j = 1 to b.length by 1
+      local cost = 1
+      if letter == b.substring(j - 1, j) then cost = 0 end
+      current.push(min(min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + cost))
+    end
+    previous = current
+  end
+  return previous[b.length] <= limit
+end
+
+chispita_check_fields = function(s)
+  for key in s
+    if chispita_sprite_fields[key] then continue end
+    local verdict = chispita_field_verdicts[key]
+    if not verdict then
+      verdict = "ok"
+      for known in chispita_sprite_fields
+        if chispita_close_name(key, known) then
+          verdict = known
+          break
+        end
+      end
+      chispita_field_verdicts[key] = verdict
+    end
+    if verdict != "ok" then
+      chispita_warn("sprite #" + s.id + " has '" + key + "', which isn't a sprite setting. Did you mean '" + verdict + "'? (If it's your own variable, ignore this.)")
+      chispita_field_verdicts[key] = "ok"
+    end
+  end
+end
+
+chispita_check_sprite_fields = function()
+  local n = chispita_sprites.length
+  if n == 0 or not chispita_sprite_fields then return end
+  for k = 1 to min(4, n) by 1
+    if chispita_field_check_index >= n then chispita_field_check_index = 0 end
+    chispita_check_fields(chispita_sprites[chispita_field_check_index])
+    chispita_field_check_index += 1
+  end
+end
+  
+Chispita_addRect = function(x, y, width, height, physics)
+  if width <= 0 or height <= 0 then
+    chispita_warn("Chispita_addRect needs a width and height above 0 (got " + width + " by " + height + ").")
+  end
+  local rect = chispita_new_sprite(x, y, "rect", physics)
+  rect.width = width
+  rect.height = height
+  rect.hit_width = width
+  rect.hit_height = height
+  rect.hurt_width = width
+  rect.hurt_height = height
+  return rect
+end
+  
+Chispita_addCircle = function(x, y, radius, physics)
+  if radius <= 0 then
+    chispita_warn("Chispita_addCircle needs a radius above 0 (got " + radius + ").")
+  end
+  local circle = chispita_new_sprite(x, y, "circle", physics)
+  circle.radius = radius
+  circle.hit_radius = radius
+  circle.hurt_radius = radius
+  return circle
+end
+  
+Chispita_setSize = function(s, width, height)
+  s.width = width
+  s.height = height
+  s.hit_width = width
+  s.hit_height = height
+  s.hurt_width = width
+  s.hurt_height = height
+end
+
+Chispita_setRadius = function(s, radius)
+  s.radius = radius
+  s.hit_radius = radius
+  s.hurt_radius = radius
+end
+
+Chispita_disable = function(o)
+  if not o then
+    chispita_warn("Chispita_disable was given nothing (0).")
+    return
+  end
+  o.active = 0
+  o.visible = 0
+end
+
+Chispita_enable = function(o)
+  if not o then
+    chispita_warn("Chispita_enable was given nothing (0).")
+    return
+  end
+  if o.removed then
+    chispita_warn("Chispita_enable can't bring back something that was removed with Chispita_remove.")
+    return
+  end
+  o.active = 1
+  o.visible = 1
+end
+
+chispita_remove_queue = []
+
+Chispita_remove = function(o)
+  if not o then
+    chispita_warn("Chispita_remove was given nothing (0).")
+    return
+  end
+  if o.removed then return end
+  o.removed = 1
+  o.active = 0
+  o.visible = 0
+  chispita_remove_queue.push(o)
+end
+
+chispita_purge_removed = function()
+  if chispita_remove_queue.length == 0 then return end
+  for o in chispita_remove_queue
+    chispita_sprites.removeElement(o)
+    chispita_drawables.removeElement(o)
+    chispita_maps.removeElement(o)
+    if Camera.target == o then Camera.target = 0 end
+    if chispita_dragging == o then chispita_dragging = 0 end
+  end
+  for s in chispita_sprites
+    if s.riding and s.riding.removed then s.riding = 0 end
+  end
+  chispita_remove_queue = []
+end
+
+Chispita_addSprite = function(image, x, y, width, height, physics)
+  if image.frame_width then
+    if not width then width = image.frame_width end
+    if not height then height = width * image.frame_height / image.frame_width end
+    local character = Chispita_addRect(x, y, width, height, physics)
+    Chispita_useSheet(character, image)
+    return character
+  end
+
+  local picture = sprites[image]
+  if not picture then
+    chispita_warn("no sprite named " + image + ". Check the name in the sprite editor.")
+    if not width then width = 16 end
+    if not height then height = width end
+    return Chispita_addRect(x, y, width, height, physics)
+  end
+  if not width then width = picture.width end
+  if not height then height = width * picture.height / picture.width end
+  local rect = Chispita_addRect(x, y, width, height, physics)
+  rect.image = image
+  return rect
+end
+
+
+// Add text
+Chispita_addText = function(text, x, y, size, color)
+  local t = object end
+  t.text = text
+  t.x = x
+  t.y = y
+  t.size = size
+  if not t.size then t.size = 10 end
+  t.color = color
+  if not t.color then t.color = "rgb(255,255,255)" end
+  t.font = "BitCell"
+  t.active = 1
+  t.visible = 1
+  t.layer = 3
+  t.parallax = 1
+  t.ui = 0
+
+  t.draw = function()
+    screen.setFont(this.font)
+    screen.drawText(this.text, chispita_screen_x(this, this.x), chispita_screen_y(this, this.y), chispita_screen_size(this, this.size), this.color)
+  end
+
+  chispita_add_drawable(t)
+  return t
+end
+
+
+// Particles
+chispita_particles = []
+chispita_particle_layer = 0
+
+Chispita_burst = function(x, y, count, color, speed, life, size)
+  if not count then count = 10 end
+  if not color then color = "rgb(255,255,255)" end
+  if not speed then speed = 60 end
+  if not life then life = 0.5 end
+  if not size then size = 2 end
+
+  if not chispita_particle_layer then
+    chispita_particle_layer = object
+      layer = 2
+      visible = 1
+      draw = function()
+        chispita_draw_particles()
+      end
+    end
+    chispita_add_drawable(chispita_particle_layer)
+  end
+
+  local index = 0
+  for i = 1 to count
+    while index < chispita_particles.length
+      if not chispita_particles[index].active then break end
+      index += 1
+    end
+    if index >= chispita_particles.length then
+      chispita_particles.push(object end)
+    end
+    local p = chispita_particles[index]
+    local angle = random.next() * 360
+    local this_speed = speed * (0.5 + random.next() * 0.5)
+    p.active = 1
+    p.x = x
+    p.y = y
+    p.vx = cosd(angle) * this_speed
+    p.vy = sind(angle) * this_speed
+    p.life = life
+    p.max_life = life
+    p.size = size
+    p.color = color
+  end
+end
+
+chispita_update_particles = function(dt)
+  for p in chispita_particles
+    if not p.active then continue end
+    p.life -= dt
+    if p.life <= 0 then
+      p.active = 0
+    else
+      p.vy -= chispita_particle_gravity * dt
+      p.x += p.vx * dt
+      p.y += p.vy * dt
+    end
+  end
+end
+
+chispita_draw_particles = function()
+  for p in chispita_particles
+    if not p.active then continue end
+    screen.setAlpha(p.life / p.max_life)
+    screen.fillRound(chispita_world_x(p.x), chispita_world_y(p.y), p.size * Camera.zoom, p.size * Camera.zoom, p.color)
+  end
+  screen.setAlpha(1)
+end
+
+chispita_live_particles = function()
+  local count = 0
+  for p in chispita_particles
+    if p.active then count += 1 end
+  end
+  return count
+end
+
+Chispita_addSheet = function(image, frame_width, frame_height)
+  local sheet = object end
+  sheet.is_sheet = 1
+  sheet.image = image
+  sheet.frame_width = frame_width
+  sheet.frame_height = frame_height
+  if not sheet.frame_height then sheet.frame_height = frame_width end
+  sheet.animations = object end
+
+  local picture = sprites[image]
+  if picture then
+    sheet.columns = max(1, floor(picture.width / sheet.frame_width))
+    sheet.rows = max(1, floor(picture.height / sheet.frame_height))
+  else
+    chispita_warn("Chispita_addSheet: no sprite named " + image + ". Check the name in the sprite editor.")
+    sheet.columns = 1
+    sheet.rows = 1
+  end
+  return sheet
+end
+
+chispita_make_animation = function(frames, fps, once)
+  local animation = object end
+  animation.frames = frames
+  animation.fps = fps
+  if not animation.fps then animation.fps = 8 end
+  animation.once = once
+  return animation
+end
+
+Chispita_addAnimation = function(sheet, name, row, first, count, fps, once)
+  if not sheet.frame_width then
+    chispita_warn("Chispita_addAnimation needs a sheet from Chispita_addSheet.")
+    return
+  end
+  if row >= sheet.rows or first + count > sheet.columns then
+    chispita_warn("animation " + name + " goes past the edge of its sheet (" + sheet.columns + " columns, " + sheet.rows + " rows).")
+  end
+  local frames = []
+  for i = 0 to count - 1 by 1
+    frames.push(row * sheet.columns + first + i)
+  end
+  sheet.animations[name] = chispita_make_animation(frames, fps, once)
+end
+
+Chispita_addAnimationFrames = function(sheet, name, frames, fps, once)
+  sheet.animations[name] = chispita_make_animation(frames, fps, once)
+end
+
+Chispita_useSheet = function(s, sheet)
+  if not sheet.frame_width then
+    chispita_warn("Chispita_useSheet needs a sheet from Chispita_addSheet.")
+    return
+  end
+  s.sheet = sheet
+  s.image = sheet.image
+  s.image_part = object end
+  s.image_part.w = sheet.frame_width
+  s.image_part.h = sheet.frame_height
+  s.animation = 0
+  chispita_show_sheet_frame(s, 0)
+end
+
+chispita_show_sheet_frame = function(s, frame_number)
+  local sheet = s.sheet
+  s.image_part.x = (frame_number % sheet.columns) * sheet.frame_width
+  s.image_part.y = floor(frame_number / sheet.columns) * sheet.frame_height
+end
+
+Chispita_play = function(s, name, restart)
+  if s.sheet then
+    local animation = s.sheet.animations[name]
+    if not animation then
+      chispita_warn("sprite #" + s.id + " has no animation named " + name + ". Add it with Chispita_addAnimation first.")
+      return
+    end
+    if s.animation == name and not restart then return end
+    s.animation = name
+    s.frame = 0
+    s.frame_time = 0
+    s.animation_done = 0
+    chispita_show_sheet_frame(s, animation.frames[0])
+    return
+  end
+
+  local image = s.animations[name]
+  if image then
+    s.image = image
+    s.animation = name
+  else
+    chispita_warn("sprite #" + s.id + " has no animation named " + name + ". Give it a sheet, or set its animations." + name + " to an image.")
+  end
+end
+
+chispita_update_animations = function(dt)
+  for s in chispita_sprites
+    if not (s.active and s.sheet and s.animation) or s.animation_done then continue end
+    local animation = s.sheet.animations[s.animation]
+    s.frame_time += dt * animation.fps * s.animation_speed
+
+    while s.frame_time >= 1
+      s.frame_time -= 1
+      s.frame += 1
+      if s.frame >= animation.frames.length then
+        if animation.once then
+          s.frame = animation.frames.length - 1
+          s.animation_done = 1
+        else
+          s.frame = 0
+        end
+        if s.on_animation_end then
+          local f = s.on_animation_end
+          f(s, s.animation)
+        end
+        break
+      end
+    end
+
+    local current = s.sheet.animations[s.animation]
+    chispita_show_sheet_frame(s, current.frames[s.frame])
+  end
+end
+
+
+// Sprite movement
+chispita_begin_frame = function()
+  for s in chispita_sprites
+    s.grounded = 0
+    if s.trigger then
+      s.old_contacts = s.contacts
+      s.contacts = object end
+      s.was_trigger = 1
+    elsif s.was_trigger then
+      s.contacts = object end
+      s.old_contacts = object end
+      s.was_trigger = 0
+    end
+    
+    if s.tile_touched then
+      s.tile_contacts = object end
+      s.tile_touched = 0
+    end
+
+    if s.on_hit then
+      s.old_hits = s.hits
+      s.hits = object end
+    end
+  end
+end
+    
+chispita_move_sprites = function(dt)
+  for s in chispita_sprites
+    if s.active and s.physics and s.kinematic and not s.fixed then
+      s.old_x = s.x
+      s.old_y = s.y
+      s.x += s.vx * dt
+      s.y += s.vy * dt
+    end
+  end
+
+  for s in chispita_sprites
+    if s.active and s.physics and not s.fixed and not s.kinematic then
+      s.old_x = s.x
+      s.old_y = s.y
+      if s.fall and chispita_mode == "platformer" then
+        s.vy -= chispita_gravity * dt
+      end
+      if s.riding and s.riding.active then
+        s.x += s.riding.x - s.riding.old_x
+        s.y += s.riding.y - s.riding.old_y
+      end
+      s.riding = 0
+      s.x += s.vx * dt
+      s.y += s.vy * dt
+    end
+  end
+end
+
+// Sprite friction
+chispita_friction_factor = function(amount, frames)
+  if frames == 1 then return amount end
+  return pow(amount, frames)
+end
+
+chispita_apply_friction = function(dt)
+  local frames = dt * 60
+  if frames <= 0 then return end
+  local ground = chispita_friction_factor(chispita_friction, frames)
+  local air = chispita_friction_factor(chispita_air_friction, frames)
+
+  for s in chispita_sprites
+    if s.active and s.physics and not s.fixed and not s.kinematic and s.drag > 0 then
+      if chispita_mode == "platformer" then
+        if s.grounded then
+          s.vx *= chispita_drag_keep(ground * chispita_friction_factor(s.friction, frames), s.drag)
+        else
+          s.vx *= chispita_drag_keep(air * chispita_friction_factor(s.air_friction, frames), s.drag)
+        end
+      elsif chispita_mode == "topdown" then
+        local keep = chispita_drag_keep(ground * chispita_friction_factor(s.friction, frames), s.drag)
+        s.vx *= keep
+        s.vy *= keep
+      end
+    end
+  end
+end
+
+chispita_drag_keep = function(keep, drag)
+  if drag == 1 then return keep end
+  return 1 - (1 - keep) * drag
+end
+
+chispita_update_lifetimes = function(dt)
+  for s in chispita_sprites
+    if s.life > 0 and s.active then
+      s.life -= dt
+      if s.life <= 0 then Chispita_remove(s) end
+    end
+  end
+end
+
+// Sprite drawing
+chispita_draw_sprite = function(s)
+  if s.alpha <= 0 then return end
+  local x = chispita_screen_x(s, s.x)
+  local y = chispita_screen_y(s, s.y)
+  local w = 0
+  local h = 0
+  if s.hit_box_shape == "circle" then
+    w = chispita_screen_size(s, s.radius * 2)
+    h = w
+  else
+    w = chispita_screen_size(s, s.width)
+    h = chispita_screen_size(s, s.height)
+  end
+
+  local margin = max(w, h) / 2
+  if s.rotation then margin = max(w, h) end
+  if x + margin < -screen.width / 2 or x - margin > screen.width / 2 then return end
+  if y + margin < -screen.height / 2 or y - margin > screen.height / 2 then return end
+
+  if s.alpha != 1 then screen.setAlpha(s.alpha) end
+  if s.rotation then screen.setDrawRotation(s.rotation) end
+
+  if s.image then
+    local flipped = s.flip_x or s.flip_y
+    if flipped then
+      local scale_x = 1
+      local scale_y = 1
+      if s.flip_x then scale_x = -1 end
+      if s.flip_y then scale_y = -1 end
+      screen.setDrawScale(scale_x, scale_y)
+    end
+    if s.image_part then
+      local p = s.image_part
+      screen.drawSpritePart(s.image, p.x, p.y, p.w, p.h, x, y, w, h)
+    else
+      screen.drawSprite(s.image, x, y, w, h)
+    end
+    if flipped then screen.setDrawScale(1, 1) end
+  elsif s.hit_box_shape == "circle" then
+    if s.fill == "fill" then
+      screen.fillRound(x, y, w, h, s.color)
+    else
+      screen.drawRound(x, y, w, h, s.color)
+    end
+  else
+    if s.fill == "fill" then
+      screen.fillRect(x, y, w, h, s.color)
+    else
+      screen.drawRect(x, y, w, h, s.color)
+    end
+  end
+
+  if s.rotation then screen.setDrawRotation(0) end
+  if s.alpha != 1 then screen.setAlpha(1) end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

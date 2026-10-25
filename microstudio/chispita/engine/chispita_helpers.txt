@@ -1,0 +1,108 @@
+Chispita_vector = function(x, y)
+  local v = object end
+  v.x = x
+  v.y = y
+  return v
+end
+
+// Distances and angles
+Chispita_distance = function(x1, y1, x2, y2)
+  local dx = x2 - x1
+  local dy = y2 - y1
+  return sqrt(dx * dx + dy * dy)
+end
+
+Chispita_distanceBetween = function(a, b)
+  return Chispita_distance(a.x, a.y, b.x, b.y)
+end
+
+Chispita_angle = function(x1, y1, x2, y2)
+  return Chispita_vectorToAngle(x2 - x1, y2 - y1)
+end
+
+Chispita_angleBetween = function(a, b)
+  return Chispita_angle(a.x, a.y, b.x, b.y)
+end
+
+Chispita_angleDifference = function(from_angle, to_angle)
+  local difference = (to_angle - from_angle) % 360
+  if difference < 0 then difference += 360 end
+  if difference > 180 then difference -= 360 end
+  return difference
+end
+
+// Vectors
+Chispita_angleToVector = function(angle, length)
+  if not length then length = 1 end
+  local radians = angle * PI / 180
+  return Chispita_vector(cos(radians) * length, sin(radians) * length)
+end
+
+Chispita_vectorToAngle = function(x, y)
+  return atan2(y, x) * 180 / PI
+end
+
+Chispita_vectorLength = function(x, y)
+  return sqrt(x * x + y * y)
+end
+
+Chispita_normalize = function(x, y)
+  local length = Chispita_vectorLength(x, y)
+  if length == 0 then return Chispita_vector(0, 0) end
+  return Chispita_vector(x / length, y / length)
+end
+
+// Movement
+Chispita_moveAtAngle = function(s, angle, speed)
+  s.vx = cosd(angle) * speed
+  s.vy = sind(angle) * speed
+end
+
+Chispita_moveToward = function(s, x, y, speed)
+  local direction = Chispita_normalize(x - s.x, y - s.y)
+  s.vx = direction.x * speed
+  s.vy = direction.y * speed
+end
+
+Chispita_approach = function(value, target, step)
+  if value < target then return min(value + step, target) end
+  return max(value - step, target)
+end
+
+Chispita_pointAt = function(s, x, y)
+  s.rotation = Chispita_angle(s.x, s.y, x, y)
+end
+
+Chispita_clamp = function(value, low, high)
+  return max(low, min(value, high))
+end
+
+Chispita_lerp = function(a, b, t)
+  return a + (b - a) * t
+end
+
+Chispita_sign = function(n)
+  if n > 0 then return 1 end
+  if n < 0 then return -1 end
+  return 0
+end
+
+Chispita_wrap = function(value, low, high)
+  local size = high - low
+  local wrapped = (value - low) % size
+  if wrapped < 0 then wrapped += size end
+  return low + wrapped
+end
+
+// Random
+Chispita_randomRange = function(low, high)
+  return low + random.next() * (high - low)
+end
+
+Chispita_randomInt = function(low, high)
+  return floor(low + random.next() * (high - low + 1))
+end
+
+Chispita_chance = function(percent)
+  return random.next() * 100 < percent
+end

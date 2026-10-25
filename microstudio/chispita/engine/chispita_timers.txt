@@ -1,0 +1,126 @@
+chispita_timers = []
+chispita_next_timer_id = 1
+
+chispita_dt = 1 / 60
+chispita_time = 0
+
+Chispita_deltaTime = function()
+  return chispita_dt
+end
+
+Chispita_gameTime = function()
+  return chispita_time
+end
+
+Chispita_perSecond = function(amount)
+  return amount * chispita_dt
+end
+
+chispita_free_timer = function()
+  local t = 0
+  for slot in chispita_timers
+    if not slot.active then
+      t = slot
+      break
+    end
+  end
+  if not t then
+    t = object end
+    chispita_timers.push(t)
+  end
+  t.active = 1
+  t.while_paused = chispita_paused
+  t.id = chispita_next_timer_id
+  chispita_next_timer_id += 1
+  t.elapsed = 0
+  return t
+end
+
+chispita_timer_handle = function(t)
+  local handle = object end
+  handle.timer = t
+  handle.id = t.id
+  return handle
+end
+
+chispita_add_timer = function(seconds, action, repeats)
+  local t = chispita_free_timer()
+  t.kind = "timer"
+  t.duration = seconds
+  t.action = action
+  t.repeats = repeats
+  return chispita_timer_handle(t)
+end
+
+Chispita_after = function(seconds, action)    
+  return chispita_add_timer(seconds, action, 0)
+end
+
+Chispita_every = function(seconds, action)  
+  if seconds <= 0 then
+    chispita_warn("Chispita_every needs more than 0 seconds, or it runs every single frame.")
+  end
+  return chispita_add_timer(seconds, action, 1)
+end
+
+Chispita_tween = function(o, field, to_value, seconds, ease)
+  if not o then
+    chispita_warn("Chispita_tween was given nothing (0) to tween.")
+    return 0
+  end
+  if ease and ease != "linear" and ease != "smooth" then
+    chispita_warn("Chispita_tween ease should be 'linear' or 'smooth', not " + ease + ".")
+  end
+  local t = chispita_free_timer()
+  t.kind = "tween"
+  t.duration = seconds
+  t.target = o
+  t.field = field
+  t.from = o[field]
+  t.to_value = to_value
+  t.ease = ease
+  if not t.ease then t.ease = "linear" end
+  return chispita_timer_handle(t)
+end
+
+Chispita_cancel = function(handle)
+  if handle and handle.timer.id == handle.id then
+    handle.timer.active = 0
+  end
+end
+
+chispita_update_timers = function(dt, paused_only)
+  for t in chispita_timers
+    if not t.active then continue end
+    if paused_only and not t.while_paused then continue end
+    t.elapsed += dt
+
+    if t.kind == "timer" then
+      if t.elapsed >= t.duration then
+        if t.repeats then
+          t.elapsed -= t.duration
+        else
+          t.active = 0
+        end
+        
+        local action = t.action
+        action()
+      end
+
+    elsif t.kind == "tween" then
+      local k = 1
+      if t.duration > 0 then k = min(1, t.elapsed / t.duration) end
+      if t.ease == "smooth" then k = k * k * (3 - 2 * k) end
+      t.target[t.field] = t.from + (t.to_value - t.from) * k
+      if k >= 1 then t.active = 0 end
+    end
+  end
+end
+
+chispita_live_timers = function()
+  local count = 0
+  for t in chispita_timers
+    if t.active then count += 1 end
+  end
+  return count
+end
