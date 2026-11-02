@@ -1,6 +1,7 @@
 ================================================================================
                         CHISPITA ENGINE - microStudio edition
                                   Documentation
+                                  Version 0.12
 ================================================================================
 
 Chispita is a small 2D engine written in microScript for microStudio. It
@@ -216,6 +217,10 @@ own variables: your game can have its own "mode" or "gravity".
 
 To change a default for every game, edit chispita_config itself.
 
+chispita_version
+    The engine's version as text, e.g. "0.12". Handy for checking which
+    copy a project has: print(chispita_version)
+
 WHAT HAPPENS EACH FRAME
 Chispita_update does this, in order:
   0. In debug mode: handles the panel and dragging, and skips the rest if
@@ -252,6 +257,64 @@ Chispita_addRect(x, y, width, height, physics)
 
 Chispita_addCircle(x, y, radius, physics)
     Makes a circle and returns it. physics works the same as above.
+
+Chispita_addCapsule(x, y, width, height, physics)
+    Makes a capsule (a rectangle with fully rounded ends, like a pill) and
+    returns it. It stands upright; use rotation to tilt or lay it down.
+      width       full width (the ends are half this as a radius)
+      height      full height, at least the width
+    A great player shape for platformers: the round bottom slides off
+    ledge corners and over bumps instead of catching on them.
+      player = Chispita_addCapsule(0, 0, 12, 24)
+
+Chispita_addPart(sprite, kind, width, height)
+    Adds an extra collision shape to a sprite, for things one shape can't
+    cover well, like a UFO with a wide base and a dome on top:
+      ufo = Chispita_addSprite("ufo", 0, 50, 40, 20)
+      ufo.hit_width = 40                          // main box: the wide base
+      ufo.hit_height = 8
+      dome = Chispita_addPart(ufo, "circle", 9)   // the dome
+      dome.offset_y = 5                           // moved up 5
+      kind      "rect", "circle" or "capsule"
+      width     optional. Defaults to the sprite's width.
+      height    optional. Defaults to the sprite's height.
+                A circle takes a radius here instead of width and height,
+                and defaults to half the sprite's smaller side.
+    Like the main hit box, a part starts centered on the sprite. Move it
+    with its own offsets, the same way hit_offset_x / hit_offset_y move the
+    main box:
+      part.offset_x   sideways from the sprite's center, default 0
+      part.offset_y   up and down from the sprite's center, default 0
+    Change part.width, part.height or part.radius later the same way.
+    Parts move and turn with the sprite (they follow rotate_hit_box).
+    They count everywhere the main hit box does: other sprites, map tiles,
+    raycasts, hurt boxes, Chispita_pointIn, Chispita_overlaps and
+    Chispita_spritesIn. Debug mode outlines them too. Parts are only
+    collision shapes; they aren't drawn.
+    Things that still use only the main hit box:
+      - the hurt box: give it its own parts with Chispita_addHurtPart
+      - one-way platforms and drop_through: keep the feet in the main box
+      - events fire once per sprite, not once per part
+    Keep it simple: most sprites need one shape. Parts are for when one
+    shape leaves big gaps or covers big empty areas.
+
+Chispita_clearParts(sprite)
+    Removes all of a sprite's extra parts.
+
+Chispita_addHurtPart(sprite, kind, width, height)
+    The same as Chispita_addPart, but the shape is added to the hurt box
+    (the attack) instead of the body. Same defaults, and offset_x /
+    offset_y start at 0. Hurt parts switch on and off with hurt_box,
+    together with the main hurt box, and a swing still hits each target
+    only once, however many of its shapes touch it.
+      sword = Chispita_addHurtPart(player, "rect", 20, 4)
+      sword.offset_x = 14
+      tip = Chispita_addHurtPart(player, "circle", 4)
+      tip.offset_x = 26
+    Debug mode outlines them in red with the main hurt box.
+
+Chispita_clearHurtParts(sprite)
+    Removes all of a sprite's hurt parts.
 
 Chispita_addSprite(image, x, y, width, height, physics)
     Makes a rectangle that draws an image from the sprite editor.
@@ -352,7 +415,9 @@ Physics
                   player holds DOWN, for example.
 
 Hit box (the body used for collisions)
-  hit_box_shape   "rect" or "circle" (set by how the sprite was made)
+  hit_box_shape   "rect", "circle" or "capsule" (set by how the sprite
+                  was made)
+  hit_parts       0, or the list of extra shapes from Chispita_addPart
   hit_width       hit box size (rects). Starts equal to width.
   hit_height
   hit_radius      hit box size (circles). Starts equal to radius.
@@ -367,12 +432,14 @@ Hit box (the body used for collisions)
 
 Hurt box (an attack area, like a sword swing; see section 5)
   hurt_box        1 = on. Default 0.
-  hurt_box_shape  "rect" or "circle". Starts the same as the hit box.
+  hurt_box_shape  "rect", "circle" or "capsule". Starts the same as the
+                  hit box.
   hurt_width      hurt box size (rects)
   hurt_height
   hurt_radius     hurt box size (circles)
   hurt_offset_x   moves the hurt box away from the center
   hurt_offset_y
+  hurt_parts      0, or the list of extra shapes from Chispita_addHurtPart
 
 Events (section 5)
   trigger         1 = gets on_enter, callback, on_exit and on_tile events
@@ -540,7 +607,7 @@ Without a sheet, Chispita_play also works with separate images:
 --------------------------------------------------------------------------------
 
 Collisions are automatic for every active sprite with physics = 1:
-rect-rect, circle-circle, rect-circle, and every sprite against solid map
+rects, circles and capsules in any mix, and every sprite against solid map
 tiles. Things that touch get pushed apart and bounce. Rect hit boxes turn
 with the sprite's rotation, so a tilted plank collides as a tilted plank.
 

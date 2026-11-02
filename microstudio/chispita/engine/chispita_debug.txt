@@ -213,6 +213,10 @@ chispita_debug_outline = function(shape, color)
   local h = shape.hh * 2 * Camera.zoom
   if shape.kind == "circle" then
     screen.drawRound(x, y, w, h, color)
+  elsif shape.kind == "capsule" then
+    if shape.angle then screen.setDrawRotation(shape.angle) end
+    screen.drawRoundRect(x, y, w, h, w / 2, color)
+    if shape.angle then screen.setDrawRotation(0) end
   elsif shape.angle then
     local ux = shape.hw * shape.cos
     local uy = shape.hw * shape.sin
@@ -315,9 +319,19 @@ chispita_debug_draw_sprite = function(s)
 
   if Debug.hit_boxes and s.physics then
     chispita_debug_outline(shape, chispita_debug_box_color(s))
+    if s.hit_parts then
+      for part in s.hit_parts
+        chispita_debug_outline(chispita_part_shape(s, part), chispita_debug_box_color(s))
+      end
+    end
   end
   if Debug.hurt_boxes and s.hurt_box then
     chispita_debug_outline(chispita_hurt_shape(s), "rgb(255,0,0)")
+    if s.hurt_parts then
+      for part in s.hurt_parts
+        chispita_debug_outline(chispita_part_shape(s, part), "rgb(255,0,0)")
+      end
+    end
   end
 
   if Debug.velocity and (s.vx != 0 or s.vy != 0) then

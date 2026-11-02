@@ -5,52 +5,76 @@ chispita_any_hurt_ignored = 0
 
 // Set sprite shapes
 chispita_set_shape = function(shape, kind, x, y, width, height, radius, angle)
+  if kind != "rect" and kind != "circle" and kind != "capsule" then
+    chispita_warn("unknown hit box shape '" + kind + "'. Use 'rect', 'circle' or 'capsule'.")
+    kind = "rect"
+  end
   shape.kind = kind
   shape.x = x
   shape.y = y
-  shape.angle = 0
+  shape.angle = angle
   shape.cos = 1
   shape.sin = 0
+  if angle then
+    shape.cos = cosd(angle)
+    shape.sin = sind(angle)
+  end
+
   if kind == "circle" then
     shape.r = radius
     shape.hw = radius
     shape.hh = radius
     shape.ex = radius
     shape.ey = radius
-  else
+  elsif kind == "rect" or kind == "capsule" then
+    local c = abs(shape.cos)
+    local n = abs(shape.sin)
     shape.hw = width / 2
     shape.hh = height / 2
-    shape.ex = shape.hw
-    shape.ey = shape.hh
-    if angle then
-      shape.angle = angle
-      shape.cos = cosd(angle)
-      shape.sin = sind(angle)
-      local c = abs(shape.cos)
-      local n = abs(shape.sin)
-      shape.ex = shape.hw * c + shape.hh * n
-      shape.ey = shape.hw * n + shape.hh * c
-    end
+    shape.ex = shape.hw * c + shape.hh * n
+    shape.ey = shape.hw * n + shape.hh * c
+  end
+
+  if kind == "capsule" then
+    shape.r = shape.hw
+    shape.half = max(0, shape.hh - shape.hw)
   end
   return shape
 end
 
-chispita_hit_angle = function(s)
-  if s.hit_box_shape == "circle" or not s.rotate_hit_box or not s.rotation then return 0 end
+chispita_rotation = function(s)
+  if not s.rotate_hit_box or not s.rotation then return 0 end
   return s.rotation % 360
 end
 
+chispita_hit_angle = function(s)
+  if s.hit_box_shape == "circle" then return 0 end
+  return chispita_rotation(s)
+end
+
 chispita_box_shape = function(s, shape, kind, offset_x, offset_y, width, height, radius)
-  local angle = chispita_hit_angle(s)
-  local ox = offset_x
-  local oy = offset_y
-  if angle then
-    local c = cosd(angle)
-    local n = sind(angle)
-    ox = offset_x * c - offset_y * n
-    oy = offset_x * n + offset_y * c
-  end
-  return chispita_set_shape(shape, kind, s.x + ox, s.y + oy, width, height, radius, angle)
+  return chispita_place_shape(s, shape, kind, offset_x, offset_y, width, height, radius, chispita_hit_angle(s))
+end
+
+chispita_part_shape = function(s, part)
+  return chispita_place_shape(s, part.shape, part.kind, part.offset_x, part.offset_y, part.width, part.height, part.radius, chispita_rotation(s))
+end
+
+chispita_sprite_shape = function(s, index)
+  if index == 0 then return chispita_hit_shape(s) end
+  return chispita_part_shape(s, s.hit_parts[index - 1])
+end
+
+chispita_shape_count = function(s)
+  if s.hit_parts then return s.hit_parts.length + 1 end
+  return 1
+end
+
+chispita_place_shape = function(s, shape, kind, offset_x, offset_y, width, height, radius, angle)
+  chispita_set_shape(shape, kind, s.x, s.y, width, height, radius, angle)
+  shape.x += offset_x * shape.cos - offset_y * shape.sin
+  shape.y += offset_x * shape.sin + offset_y * shape.cos
+  return shape
 end
 
 chispita_hit_shape = function(s)
@@ -98,13 +122,18 @@ end
 chispita_test_box_box = function(a, b)
   local dx = b.x - a.x
   local dy = b.y - a.y
-  local axes = [a.cos, a.sin, -a.sin, a.cos, b.cos, b.sin, -b.sin, b.cos]
   local best = -1
   local best_nx = 0
   local best_ny = 0
-  for i = 0 to 6 by 2
-    local ax = axes[i]
-    local ay = axes[i + 1]
+  for i = 0 to 3 by 1
+    local owner = a
+    if i >= 2 then owner = b end
+    local ax = owner.cos
+    local ay = owner.sin
+    if i % 2 == 1 then
+      ax = -owner.sin
+      ay = owner.cos
+    end
     local ra = a.hw * abs(a.cos * ax + a.sin * ay) + a.hh * abs(a.cos * ay - a.sin * ax)
     local rb = b.hw * abs(b.cos * ax + b.sin * ay) + b.hh * abs(b.cos * ay - b.sin * ax)
     local d = dx * ax + dy * ay
@@ -195,18 +224,99 @@ chispita_test_circle_circle = function(a, b)
   return hit
 end
 
+chispita_capsule_circle_a = object end
+chispita_capsule_circle_b = object end
+chispita_capsule_point_a = object end
+chispita_capsule_point_b = object end
+
+chispita_closest_on_segment = function(x1, y1, x2, y2, px, py, out)
+  local dx = x2 - x1
+  local dy = y2 - y1
+  local length_sq = dx * dx + dy * dy
+  local t = 0
+  if length_sq > 0 then t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / length_sq)) end
+  out.x = x1 + dx * t
+  out.y = y1 + dy * t
+end
+
+chispita_capsule_point = function(c, px, py, out)
+  local ux = -c.sin * c.half
+  local uy = c.cos * c.half
+  chispita_closest_on_segment(c.x - ux, c.y - uy, c.x + ux, c.y + uy, px, py, out)
+end
+
+chispita_closest_on_rect = function(r, px, py, out)
+  local wx = px - r.x
+  local wy = py - r.y
+  local lx = max(-r.hw, min(wx * r.cos + wy * r.sin, r.hw))
+  local ly = max(-r.hh, min(wy * r.cos - wx * r.sin, r.hh))
+  out.x = r.x + lx * r.cos - ly * r.sin
+  out.y = r.y + lx * r.sin + ly * r.cos
+end
+
+chispita_circle_at = function(circle, x, y, r)
+  circle.kind = "circle"
+  circle.x = x
+  circle.y = y
+  circle.r = r
+  return circle
+end
+
+chispita_capsule_vs_circle = function(cap, circle)
+  local p = chispita_capsule_point_a
+  chispita_capsule_point(cap, circle.x, circle.y, p)
+  return chispita_test_circle_circle(chispita_circle_at(chispita_capsule_circle_a, p.x, p.y, cap.r), circle)
+end
+
+chispita_capsule_vs_capsule = function(a, b)
+  local p = chispita_capsule_point_a
+  local q = chispita_capsule_point_b
+  chispita_capsule_point(a, b.x, b.y, p)
+  for i = 1 to 3 by 1
+    chispita_capsule_point(b, p.x, p.y, q)
+    chispita_capsule_point(a, q.x, q.y, p)
+  end
+  chispita_capsule_point(b, p.x, p.y, q)
+  return chispita_test_circle_circle(chispita_circle_at(chispita_capsule_circle_a, p.x, p.y, a.r), chispita_circle_at(chispita_capsule_circle_b, q.x, q.y, b.r))
+end
+
+chispita_rect_vs_capsule = function(rect, cap)
+  local p = chispita_capsule_point_a
+  local q = chispita_capsule_point_b
+  chispita_capsule_point(cap, rect.x, rect.y, p)
+  for i = 1 to 3 by 1
+    chispita_closest_on_rect(rect, p.x, p.y, q)
+    chispita_capsule_point(cap, q.x, q.y, p)
+  end
+  return chispita_test_rect_circle(rect, chispita_circle_at(chispita_capsule_circle_a, p.x, p.y, cap.r))
+end
+
+chispita_flip_hit = function(hit)
+  if hit then
+    hit.nx = -hit.nx
+    hit.ny = -hit.ny
+  end
+  return hit
+end
+
+chispita_test_capsule = function(a, b)
+  if a.kind == "capsule" and b.kind == "capsule" then return chispita_capsule_vs_capsule(a, b) end
+  if a.kind == "capsule" then
+    if b.kind == "circle" then return chispita_capsule_vs_circle(a, b) end
+    return chispita_flip_hit(chispita_rect_vs_capsule(b, a))
+  end
+  if a.kind == "circle" then return chispita_flip_hit(chispita_capsule_vs_circle(b, a)) end
+  return chispita_rect_vs_capsule(a, b)
+end
+
 chispita_test = function(a, b)
+  if a.kind == "capsule" or b.kind == "capsule" then return chispita_test_capsule(a, b) end
   if a.kind == "circle" and b.kind == "circle" then
     return chispita_test_circle_circle(a, b)
   elsif b.kind == "circle" then
     return chispita_test_rect_circle(a, b)
   elsif a.kind == "circle" then
-    local hit = chispita_test_rect_circle(b, a)
-    if hit then
-      hit.nx = -hit.nx
-      hit.ny = -hit.ny
-    end
-    return hit
+    return chispita_flip_hit(chispita_test_rect_circle(b, a))
   end
   return chispita_test_rect_rect(a, b)
 end
@@ -330,6 +440,15 @@ chispita_update_bounds = function(s)
   s.right = shape.x + shape.ex
   s.bottom = shape.y - shape.ey
   s.top = shape.y + shape.ey
+  if s.hit_parts then
+    for part in s.hit_parts
+      local p = chispita_part_shape(s, part)
+      s.left = min(s.left, p.x - p.ex)
+      s.right = max(s.right, p.x + p.ex)
+      s.bottom = min(s.bottom, p.y - p.ey)
+      s.top = max(s.top, p.y + p.ey)
+    end
+  end
 end
 
 chispita_sort_by_left = function(list)
@@ -354,6 +473,21 @@ chispita_collide_pair = function(s1, s2)
   local a = chispita_hit_shape(s1)
   local b = chispita_hit_shape(s2)
   local hit = chispita_test(a, b)
+  if s1.hit_parts or s2.hit_parts then
+    for i = 0 to chispita_shape_count(s1) - 1 by 1
+      for j = 0 to chispita_shape_count(s2) - 1 by 1
+        if i == 0 and j == 0 then continue end
+        local sa = chispita_sprite_shape(s1, i)
+        local sb = chispita_sprite_shape(s2, j)
+        local h = chispita_test(sa, sb)
+        if h and (not hit or h.overlap > hit.overlap) then
+          hit = h
+          a = sa
+          b = sb
+        end
+      end
+    end
+  end
   if not hit then return end
 
   chispita_record_contact(s1, s2)
@@ -452,21 +586,44 @@ chispita_fire_contact_events = function()
 end
 
 chispita_check_hurt_boxes = function()
+  local attackers = 0
   for a in chispita_sprites
-    if not (a.hurt_box and a.active) then
-      if a.was_hurting then
-        a.hurting = object end
-        a.was_hurting = 0
-      end
-      continue
+    if a.hurt_box and a.active then
+      attackers += 1
+    elsif a.was_hurting then
+      a.hurting = object end
+      a.was_hurting = 0
     end
+  end
+  if attackers == 0 then return end
+
+  for s in chispita_sprites
+    if s.active and s.physics then chispita_update_bounds(s) end
+  end
+
+  for a in chispita_sprites
+    if not (a.hurt_box and a.active) then continue end
     a.was_hurting = 1
     local hurt = chispita_hurt_shape(a)
+    local left = hurt.x - hurt.ex
+    local right = hurt.x + hurt.ex
+    local bottom = hurt.y - hurt.ey
+    local top = hurt.y + hurt.ey
+    if a.hurt_parts then
+      for part in a.hurt_parts
+        local p = chispita_part_shape(a, part)
+        left = min(left, p.x - p.ex)
+        right = max(right, p.x + p.ex)
+        bottom = min(bottom, p.y - p.ey)
+        top = max(top, p.y + p.ey)
+      end
+    end
     for b in chispita_sprites
       if b == a or not (b.active and b.physics) then continue end
+      if b.left > right or b.right < left or b.bottom > top or b.top < bottom then continue end
       if not chispita_can_hurt(a, b) then continue end
       if a.hurting[b.id] then continue end
-      if chispita_test(hurt, chispita_hit_shape(b)) then
+      if chispita_hurt_touches(a, hurt, b) then
         a.hurting[b.id] = b
         if a.on_hurt then
           local f = a.on_hurt
@@ -478,17 +635,50 @@ chispita_check_hurt_boxes = function()
 end
 
 // Collision response questions
+chispita_shape_touches = function(shape, s)
+  if chispita_test(shape, chispita_hit_shape(s)) then return 1 end
+  if s.hit_parts then
+    for part in s.hit_parts
+      if chispita_test(shape, chispita_part_shape(s, part)) then return 1 end
+    end
+  end
+  return 0
+end
+
+chispita_hurt_touches = function(a, hurt, b)
+  if chispita_shape_touches(hurt, b) then return 1 end
+  if a.hurt_parts then
+    for part in a.hurt_parts
+      if chispita_shape_touches(part.shape, b) then return 1 end
+    end
+  end
+  return 0
+end
+
 Chispita_overlaps = function(a, b)
-  if chispita_test(chispita_hit_shape(a), chispita_hit_shape(b)) then return 1 end
+  for i = 0 to chispita_shape_count(a) - 1 by 1
+    if chispita_shape_touches(chispita_sprite_shape(a, i), b) then return 1 end
+  end
   return 0
 end
 
 Chispita_pointIn = function(s, x, y)
-  local shape = chispita_hit_shape(s)
+  for i = 0 to chispita_shape_count(s) - 1 by 1
+    if chispita_point_in_shape(chispita_sprite_shape(s, i), x, y) then return 1 end
+  end
+  return 0
+end
+
+chispita_point_in_shape = function(shape, x, y)
   local dx = x - shape.x
   local dy = y - shape.y
   if shape.kind == "circle" then
     return dx * dx + dy * dy < shape.r * shape.r
+  end
+  if shape.kind == "capsule" then
+    local p = chispita_capsule_point_a
+    chispita_capsule_point(shape, x, y, p)
+    return (x - p.x) * (x - p.x) + (y - p.y) * (y - p.y) < shape.r * shape.r
   end
   local lx = dx * shape.cos + dy * shape.sin
   local ly = dy * shape.cos - dx * shape.sin
@@ -513,7 +703,7 @@ Chispita_spritesIn = function(x, y, width, height)
   end
   local area = chispita_set_shape(chispita_query_shape, "rect", x, y, width, height, 0, 0)
   for s in chispita_sprites
-    if s.active and chispita_test(area, chispita_hit_shape(s)) then list.push(s) end
+    if s.active and chispita_shape_touches(area, s) then list.push(s) end
   end
   return list
 end
@@ -535,33 +725,67 @@ chispita_ray_slab = function(start, move, half, t)
   if t.near > t.far then t.miss = 1 end
 end
 
-chispita_ray_sprite = function(s, x1, y1, dx, dy)
-  local shape = chispita_hit_shape(s)
+chispita_ray_circle = function(cx, cy, r, x1, y1, dx, dy)
+  local fx = x1 - cx
+  local fy = y1 - cy
+  local a = dx * dx + dy * dy
+  local b = 2 * (fx * dx + fy * dy)
+  local c = fx * fx + fy * fy - r * r
+  if c <= 0 then return 0 end
+  local disc = b * b - 4 * a * c
+  if disc < 0 then return -1 end
+  local t = (-b - sqrt(disc)) / (2 * a)
+  if t < 0 or t > 1 then return -1 end
+  return t
+end
+
+chispita_ray_span = object end
+
+chispita_ray_box = function(shape, half_w, half_h, x1, y1, dx, dy)
   local fx = x1 - shape.x
   local fy = y1 - shape.y
-  if shape.kind == "circle" then
-    local a = dx * dx + dy * dy
-    local b = 2 * (fx * dx + fy * dy)
-    local c = fx * fx + fy * fy - shape.r * shape.r
-    if c <= 0 then return 0 end
-    local disc = b * b - 4 * a * c
-    if disc < 0 then return -1 end
-    local t = (-b - sqrt(disc)) / (2 * a)
-    if t < 0 or t > 1 then return -1 end
-    return t
-  end
   local lx = fx * shape.cos + fy * shape.sin
   local ly = fy * shape.cos - fx * shape.sin
   local ldx = dx * shape.cos + dy * shape.sin
   local ldy = dy * shape.cos - dx * shape.sin
-  local t = object end
+  local t = chispita_ray_span
   t.near = 0
   t.far = 1
   t.miss = 0
-  chispita_ray_slab(lx, ldx, shape.hw, t)
-  if not t.miss then chispita_ray_slab(ly, ldy, shape.hh, t) end
+  chispita_ray_slab(lx, ldx, half_w, t)
+  if not t.miss then chispita_ray_slab(ly, ldy, half_h, t) end
   if t.miss then return -1 end
   return t.near
+end
+
+chispita_ray_nearest = function(a, b)
+  if a < 0 then return b end
+  if b < 0 then return a end
+  return min(a, b)
+end
+
+chispita_ray_shape = function(shape, x1, y1, dx, dy)
+  if shape.kind == "circle" then
+    return chispita_ray_circle(shape.x, shape.y, shape.r, x1, y1, dx, dy)
+  end
+  if shape.kind == "capsule" then
+    local ux = -shape.sin * shape.half
+    local uy = shape.cos * shape.half
+    local t = chispita_ray_box(shape, shape.r, shape.half, x1, y1, dx, dy)
+    t = chispita_ray_nearest(t, chispita_ray_circle(shape.x - ux, shape.y - uy, shape.r, x1, y1, dx, dy))
+    return chispita_ray_nearest(t, chispita_ray_circle(shape.x + ux, shape.y + uy, shape.r, x1, y1, dx, dy))
+  end
+  return chispita_ray_box(shape, shape.hw, shape.hh, x1, y1, dx, dy)
+end
+
+chispita_ray_sprite = function(s, x1, y1, dx, dy)
+  local t = chispita_ray_shape(chispita_hit_shape(s), x1, y1, dx, dy)
+  if s.hit_parts then
+    for part in s.hit_parts
+      t = chispita_ray_nearest(t, chispita_ray_shape(chispita_part_shape(s, part), x1, y1, dx, dy))
+    end
+  end
+  return t
 end
 
 Chispita_raycast = function(x1, y1, x2, y2, ignore)

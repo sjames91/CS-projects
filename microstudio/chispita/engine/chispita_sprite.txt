@@ -43,12 +43,14 @@ chispita_new_sprite = function(x,y,shape,physics)
   s.hit_box_shape = shape
   s.hit_offset_x = 0
   s.hit_offset_y = 0
+  s.hit_parts = 0
   
   // Sprite hurt box variables
   s.hurt_box = 0
   s.hurt_box_shape = shape
   s.hurt_offset_x = 0
   s.hurt_offset_y = 0
+  s.hurt_parts = 0
   
   //Hit and hurt boxes only make collision object once not every frame.
   s.hit_shape = object end
@@ -208,7 +210,90 @@ Chispita_addCircle = function(x, y, radius, physics)
   circle.hurt_radius = radius
   return circle
 end
+
+Chispita_addCapsule = function(x, y, width, height, physics)
+  if width <= 0 or height <= 0 then
+    chispita_warn("Chispita_addCapsule needs a width and height above 0 (got " + width + " by " + height + ").")
+  end
+  if height < width then
+    chispita_warn("Chispita_addCapsule: height should be at least the width. A capsule stands upright; use rotation to lay it down.")
+    height = width
+  end
+  local capsule = chispita_new_sprite(x, y, "capsule", physics)
+  capsule.width = width
+  capsule.height = height
+  capsule.hit_width = width
+  capsule.hit_height = height
+  capsule.hurt_width = width
+  capsule.hurt_height = height
+  return capsule
+end
   
+chispita_make_part = function(s, kind, width, height, caller)
+  if not s then
+    chispita_warn(caller + " was given nothing (0) to add a part to.")
+    return 0
+  end
+  local sprite_width = s.width
+  local sprite_height = s.height
+  if s.hit_box_shape == "circle" then
+    sprite_width = s.radius * 2
+    sprite_height = s.radius * 2
+  end
+  local part = object end
+  part.kind = kind
+  part.offset_x = 0
+  part.offset_y = 0
+  part.width = 0
+  part.height = 0
+  part.radius = 0
+  if kind == "rect" or kind == "capsule" then
+    part.width = width
+    part.height = height
+    if not part.width then part.width = sprite_width end
+    if not part.height then part.height = sprite_height end
+    if part.width <= 0 or part.height <= 0 then
+      chispita_warn(caller + ": a " + kind + " part needs a width and height above 0.")
+    end
+    if kind == "capsule" and part.height < part.width then part.height = part.width end
+  elsif kind == "circle" then
+    part.radius = width
+    if not part.radius then part.radius = min(sprite_width, sprite_height) / 2 end
+    if part.radius <= 0 then
+      chispita_warn(caller + ": a circle part needs a radius above 0.")
+    end
+  else
+    chispita_warn(caller + ": kind should be 'rect', 'circle' or 'capsule', not " + kind + ".")
+    return 0
+  end
+  part.shape = object end
+  return part
+end
+
+Chispita_addPart = function(s, kind, width, height)
+  local part = chispita_make_part(s, kind, width, height, "Chispita_addPart")
+  if not part then return 0 end
+  if not s.hit_parts then s.hit_parts = [] end
+  s.hit_parts.push(part)
+  return part
+end
+
+Chispita_addHurtPart = function(s, kind, width, height)
+  local part = chispita_make_part(s, kind, width, height, "Chispita_addHurtPart")
+  if not part then return 0 end
+  if not s.hurt_parts then s.hurt_parts = [] end
+  s.hurt_parts.push(part)
+  return part
+end
+
+Chispita_clearParts = function(s)
+  if s then s.hit_parts = 0 end
+end
+
+Chispita_clearHurtParts = function(s)
+  if s then s.hurt_parts = 0 end
+end
+
 Chispita_setSize = function(s, width, height)
   s.width = width
   s.height = height
@@ -668,6 +753,12 @@ chispita_draw_sprite = function(s)
       screen.fillRound(x, y, w, h, s.color)
     else
       screen.drawRound(x, y, w, h, s.color)
+    end
+  elsif s.hit_box_shape == "capsule" then
+    if s.fill == "fill" then
+      screen.fillRoundRect(x, y, w, h, w / 2, s.color)
+    else
+      screen.drawRoundRect(x, y, w, h, w / 2, s.color)
     end
   else
     if s.fill == "fill" then

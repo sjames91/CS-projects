@@ -164,7 +164,13 @@ end
 chispita_collide_sprite_map = function(s, m, l)
   local wants_touch = (s.trigger and s.on_tile) or m.callback
   if not (chispita_movable(s) or wants_touch) then return end
-  local shape = chispita_hit_shape(s)
+  for index = 0 to chispita_shape_count(s) - 1 by 1
+    chispita_collide_shape_map(s, m, l, index, wants_touch)
+  end
+end
+
+chispita_collide_shape_map = function(s, m, l, index, wants_touch)
+  local shape = chispita_sprite_shape(s, index)
   local x0 = max(0, floor((shape.x - shape.ex - l.left) / l.cw))
   local x1 = min(m.map.width - 1, floor((shape.x + shape.ex - l.left) / l.cw))
   local y0 = max(0, floor((shape.y - shape.ey - l.bottom) / l.ch))
@@ -183,7 +189,7 @@ chispita_collide_sprite_map = function(s, m, l)
       body.cy = cy
       chispita_set_shape(body.shape, "rect", l.left + (cx + 0.5) * l.cw, l.bottom + (cy + 0.5) * l.ch, l.cw, l.ch, 0)
 
-      local hit = chispita_test(chispita_hit_shape(s), body.shape)
+      local hit = chispita_test(chispita_sprite_shape(s, index), body.shape)
       if hit and hit.ox and kind == "solid" then
         hit = chispita_skip_internal_edge(m, body, hit)
       end
