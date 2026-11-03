@@ -1,7 +1,7 @@
 ================================================================================
                         CHISPITA ENGINE - microStudio edition
                                   Documentation
-                                  Version 0.12
+                                  Version 0.13
 ================================================================================
 
 Chispita is a small 2D engine written in microScript for microStudio. It
@@ -212,6 +212,9 @@ own variables: your game can have its own "mode" or "gravity".
       Downward pull on particles.
   chispita_background = "rgb(0,0,0)"
       Color the screen is cleared to. 0 = don't clear.
+  chispita_max_map_copies = 400
+      Most copies of one tiled map drawn per frame. A map too small for
+      the zoom is drawn once instead, with a warning.
   chispita_debug_mode = 0
       1 = debug mode on (section 9).
 
@@ -783,6 +786,8 @@ Chispita_addMap(name, x, y, physics, cell_size)
       level = Chispita_addMap("level1", 0, 0)
       sky = Chispita_addMap("sky", 0, 0, physics_off)
       sky.parallax = 0.5
+      sky.tile = 1
+      sky.tile_down = 0
 
     Solid maps draw on layer 0, background maps on layer -1 (behind).
 
@@ -833,6 +838,13 @@ Map variables
   layer       draw layer (change it with Chispita_setLayer)
   parallax    1 = moves with the camera. 0.5 = half speed (far away).
               0 = never moves.
+  tile        1 = the map repeats forever, for drawing and collisions,
+              so a solid tiled map works as an endless level. Default 0.
+              Chispita_cellAt, raycasts and tile callbacks see the copies
+              too (tile.cx, tile.cy are the cell in the real map).
+              Chispita_spawnFromMap only spawns from the real map.
+  tile_across 0 = don't repeat left and right. Default 1.
+  tile_down   0 = don't repeat up and down. Default 1.
   ui          1 = ignores the camera
   bounciness  bounce of every tile, default 0.3
   grip        grip of every tile, default 0 (see section 5)
@@ -884,6 +896,7 @@ Chispita_setCameraBounds(left, bottom, right, top)
 
 Chispita_limitCameraToMap(map)
     The same, using the edges of a map, so you never see past the level.
+    A tiled map has no edge in the directions it repeats.
 
 Chispita_screenToWorld(x, y)
     Turns a screen position (like mouse.x, mouse.y) into a world position,

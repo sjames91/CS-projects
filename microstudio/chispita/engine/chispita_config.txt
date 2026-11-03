@@ -21,6 +21,7 @@ chispita_config = function()
 
   // Drawing
   chispita_background = "rgb(0,0,0)"
+  chispita_max_map_copies = 400      // most copies of one tiled map drawn per frame
 
   // Debug
   chispita_debug_mode = 0

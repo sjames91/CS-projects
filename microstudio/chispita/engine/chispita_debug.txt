@@ -272,14 +272,22 @@ chispita_debug_draw_map_cells = function()
   for m in chispita_maps
     if not (m.map and m.physics and m.active) then continue end
     local l = chispita_map_layout(m)
-    local x0 = max(0, floor((chispita_view_x() - half_w - l.left) / l.cw))
-    local x1 = min(m.map.width - 1, floor((chispita_view_x() + half_w - l.left) / l.cw))
-    local y0 = max(0, floor((chispita_view_y() - half_h - l.bottom) / l.ch))
-    local y1 = min(m.map.height - 1, floor((chispita_view_y() + half_h - l.bottom) / l.ch))
+    local x0 = floor((chispita_view_x() - half_w - l.left) / l.cw)
+    local x1 = floor((chispita_view_x() + half_w - l.left) / l.cw)
+    local y0 = floor((chispita_view_y() - half_h - l.bottom) / l.ch)
+    local y1 = floor((chispita_view_y() + half_h - l.bottom) / l.ch)
+    if not chispita_tiles_across(m) then
+      x0 = max(0, x0)
+      x1 = min(m.map.width - 1, x1)
+    end
+    if not chispita_tiles_down(m) then
+      y0 = max(0, y0)
+      y1 = min(m.map.height - 1, y1)
+    end
 
     for cy = y0 to y1 by 1
       for cx = x0 to x1 by 1
-        local kind = chispita_tile_kind(m, m.map.get(cx, cy))
+        local kind = chispita_tile_kind(m, chispita_map_get(m, cx, cy))
         if kind == "empty" then continue end
         local x = chispita_world_x(l.left + (cx + 0.5) * l.cw)
         local y = chispita_world_y(l.bottom + (cy + 0.5) * l.ch)
@@ -381,8 +389,8 @@ chispita_debug_draw_mouse = function()
     local cell = Chispita_cellAt(m, world.x, world.y)
     if cell then
       local l = chispita_map_layout(m)
-      local cx = floor((world.x - l.left) / l.cw)
-      local cy = floor((world.y - l.bottom) / l.ch)
+      local cx = chispita_wrap_x(m, floor((world.x - l.left) / l.cw))
+      local cy = chispita_wrap_y(m, floor((world.y - l.bottom) / l.ch))
       lines.push(m.name + " [" + cx + "," + cy + "] " + cell + " (" + chispita_tile_kind(m, cell) + ")")
     end
   end

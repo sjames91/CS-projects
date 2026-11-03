@@ -106,9 +106,21 @@ Chispita_limitCameraToMap = function(m)
     return
   end
   local l = chispita_map_layout(m)
-  if l then
-    Chispita_setCameraBounds(l.left, l.bottom, l.left + l.width, l.bottom + l.height)
+  if not l then return end
+  local huge = 1000000000
+  local left = l.left
+  local right = l.left + l.width
+  local bottom = l.bottom
+  local top = l.bottom + l.height
+  if chispita_tiles_across(m) then
+    left = -huge
+    right = huge
   end
+  if chispita_tiles_down(m) then
+    bottom = -huge
+    top = huge
+  end
+  Chispita_setCameraBounds(left, bottom, right, top)
 end
 
 // Camera view
