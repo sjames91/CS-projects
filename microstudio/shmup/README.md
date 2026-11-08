@@ -2,6 +2,8 @@
 
 A side-scrolling ship game built on the [Chispita](../chispita) engine in microStudio. It's a work in progress. Right now you can fly a ship over a map, land it, get out and walk around as the pilot, and get back in.
 
+**[▶ Play it in the browser](https://microstudio.io/Sjamescalaway/day1thegameplayloopdrawing/JE4B894V/)**
+
 The files are plain-text copies of the microStudio source files. The sprites and maps they refer to (`ship_1`, `overworld/overworld`, and so on) are in the microStudio project and aren't included here.
 
 ## Controls
