@@ -1,0 +1,163 @@
+player_init = function()
+  ship = true
+  player_pilot = Chispita_addSprite("player_character")
+    Chispita_disable(player_pilot)
+    player_pilot.speed = 15
+    player_pilot.bounciness = 0
+  player_ship = Chispita_addSprite("ship_1")
+    player_ship.hit_width = 15
+    player_ship.hit_height = 13
+    player_ship.hit_offset_y = -1
+    local base = Chispita_addPart(player_ship, "rect", 30, 5)
+    base.offset_y = -5
+    player_ship.fall = 0
+    player_ship.top_speed = 120
+    player_ship.handling = 200
+    player_ship.bounciness = 0.5
+    player_ship_measure(player_ship)
+    Chispita_setTarget(player_ship)
+end
+
+player_update = function()
+  if ship == true then
+    player_controls()
+  elsif ship == false then
+    pilot_controls()
+  end
+end
+
+player_draw = function()
+end
+
+pilot_controls = function()
+  if keyboard.RIGHT then
+    player_pilot.vx += player_pilot.speed
+  end
+  
+  if keyboard.LEFT then
+    player_pilot.vx -= player_pilot.speed
+  end
+  
+  if player_pilot.grounded == true and keyboard.UP then
+    player_pilot.vy += 150
+  end
+  
+  if Chispita_distanceBetween(player_pilot, player_ship) <30 and keyboard.press.Q then
+    enter_ship()
+  end
+end
+
+player_controls = function()
+  
+  player_ship.air_friction = 1 / chispita_air_friction
+  local frames = Chispita_deltaTime() * 60
+  local stop_frames = max(1, player_ship.handling * player_ship.mass)
+  local k = pow(0.1, 1 / stop_frames)
+  local push = player_ship.top_speed * player_ship.side_shape * (1 - k) / k * frames
+  local vertical_frames = max(1, stop_frames / 2)
+  local kv = pow(0.1, 1 / vertical_frames)
+  local lift = player_ship.top_speed * player_ship.climb_shape * (1 - kv) / kv * frames
+  local fall_frames = max(1, player_ship.handling / 1.5 * player_ship.fall_shape)
+  local kf = pow(0.1, 1 / fall_frames)
+  local sink = player_ship.handling * 2 * player_ship.fall_shape * (1 - kf) / kf * frames
+  
+  if player_ship.grounded == true then
+    if keyboard.press.Q then
+      exit_ship()
+    end
+  end
+  if keyboard.LEFT then
+    player_ship.vx -= push
+  end
+  if keyboard.RIGHT then
+    player_ship.vx += push
+  end
+
+  local vertical_keep = pow(kv, frames)
+  if keyboard.UP then
+    player_ship.vy += lift
+  else
+    player_ship.vy -= sink
+    vertical_keep = pow(kf, frames)
+  end
+  
+  if keyboard.DOWN then
+    player_ship.vy -= lift * 1.5 + 3 * frames
+    vertical_keep = pow(pow(0.1, 1 / (fall_frames * 2)), frames)
+  end
+
+  player_ship.vx *= pow(k, frames)
+  player_ship.vy *= vertical_keep
+end
+
+enter_ship = function()
+  ship = true
+  Chispita_disable(player_pilot)
+  player_ship.fixed = false
+  player_camera_switch(player_ship)
+end
+
+exit_ship = function()
+  local reach = 25 + player_pilot.hit_width / 2
+  local side = 0
+  if not Chispita_raycast(player_ship.x, player_ship.y, player_ship.x + reach, player_ship.y, player_ship) then
+    side = 1
+  elsif not Chispita_raycast(player_ship.x, player_ship.y, player_ship.x - reach, player_ship.y, player_ship) then
+    side = -1
+  end
+  if side == 0 then return end
+  ship = false
+  player_ship.fixed = true
+  player_pilot.y = player_ship.y
+  player_pilot.x = player_ship.x + 25 * side
+  Chispita_enable(player_pilot)
+  player_camera_switch(player_pilot)
+end
+
+player_shape_area = function(kind, width, height, radius)
+  if kind == "circle" then return PI * radius * radius end
+  if kind == "capsule" then return width * (height - width) + PI * width * width / 4 end
+  return width * height
+end
+
+player_ship_measure = function(ship)
+  local half_width = ship.hit_width / 2
+  local half_height = ship.hit_height / 2
+  if ship.hit_box_shape == "circle" then
+    half_width = ship.hit_radius
+    half_height = ship.hit_radius
+  end
+  local left = ship.hit_offset_x - half_width
+  local right = ship.hit_offset_x + half_width
+  local bottom = ship.hit_offset_y - half_height
+  local top = ship.hit_offset_y + half_height
+  local area = player_shape_area(ship.hit_box_shape, ship.hit_width, ship.hit_height, ship.hit_radius)
+  if ship.hit_parts then
+    for part in ship.hit_parts
+      half_width = part.width / 2
+      half_height = part.height / 2
+      if part.kind == "circle" then
+        half_width = part.radius
+        half_height = part.radius
+      end
+      left = min(left, part.offset_x - half_width)
+      right = max(right, part.offset_x + half_width)
+      bottom = min(bottom, part.offset_y - half_height)
+      top = max(top, part.offset_y + half_height)
+      area += player_shape_area(part.kind, part.width, part.height, part.radius)
+    end
+  end
+  ship.ship_width = right - left
+  ship.ship_height = top - bottom
+  ship.mass = area / 345
+  local upright = sqrt(ship.ship_height / ship.ship_width * 30 / 13)
+  ship.fall_shape = sqrt(ship.mass * 30 / ship.ship_width * upright)
+  ship.climb_shape = sqrt(30 / ship.ship_width * upright / ship.mass)
+  ship.side_shape = sqrt(13 / ship.ship_height / upright)
+end
+
+player_camera_switch = function(target)
+  Chispita_setTarget(target)
+  Camera.smooth = 0.01
+  Chispita_tween(Camera, "smooth", 1, 1)
+end
