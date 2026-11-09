@@ -1,7 +1,7 @@
 ================================================================================
                         CHISPITA ENGINE - microStudio edition
                                   Documentation
-                                  Version 0.13
+                                  Version 0.14
 ================================================================================
 
 Chispita is a small 2D engine written in microScript for microStudio. It
@@ -834,7 +834,8 @@ Map variables
   cell_size   world width of one cell
   physics     1 = tiles collide, 0 = draw only
   active      0 = tiles stop colliding
-  visible     0 = not drawn
+  visible     0 = not drawn. Maps fully off screen are skipped
+              automatically (still collide), so big maps far away are free.
   layer       draw layer (change it with Chispita_setLayer)
   parallax    1 = moves with the camera. 0.5 = half speed (far away).
               0 = never moves.

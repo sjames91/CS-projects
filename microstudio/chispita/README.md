@@ -1,6 +1,6 @@
 # Chispita
 
-A small 2D game engine written in [microScript](https://microstudio.dev/documentation/microScript/) for [microStudio](https://microstudio.dev), a browser-based game maker. Current version: **0.13**.
+A small 2D game engine written in [microScript](https://microstudio.dev/documentation/microScript/) for [microStudio](https://microstudio.dev), a browser-based game maker. Current version: **0.14**.
 
 microScript is a small Lua-like language. microStudio projects live in the browser, so the files here are plain-text copies of each source file (`.txt`). Each one is pasted into a microStudio source file of the same name.
 

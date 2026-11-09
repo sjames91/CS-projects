@@ -372,6 +372,8 @@ chispita_draw_map = function(m)
   local w = chispita_screen_size(m, l.width)
   local h = chispita_screen_size(m, l.height)
   if not m.tile then
+    if x + w / 2 < -screen.width / 2 or x - w / 2 > screen.width / 2 then return end
+    if y + h / 2 < -screen.height / 2 or y - h / 2 > screen.height / 2 then return end
     screen.drawMap(m.map, x, y, w, h)
     return
   end
