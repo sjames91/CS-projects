@@ -371,14 +371,14 @@ chispita_draw_map = function(m)
   local y = chispita_screen_y(m, m.y)
   local w = chispita_screen_size(m, l.width)
   local h = chispita_screen_size(m, l.height)
+  local across = chispita_tiles_across(m)
+  local down = chispita_tiles_down(m)
+  if not across and (x + w / 2 < -screen.width / 2 or x - w / 2 > screen.width / 2) then return end
+  if not down and (y + h / 2 < -screen.height / 2 or y - h / 2 > screen.height / 2) then return end
   if not m.tile then
-    if x + w / 2 < -screen.width / 2 or x - w / 2 > screen.width / 2 then return end
-    if y + h / 2 < -screen.height / 2 or y - h / 2 > screen.height / 2 then return end
     screen.drawMap(m.map, x, y, w, h)
     return
   end
-  local across = chispita_tiles_across(m)
-  local down = chispita_tiles_down(m)
   local copies = 1
   if across then copies *= ceil(screen.width / w) + 1 end
   if down then copies *= ceil(screen.height / h) + 1 end
