@@ -238,5 +238,6 @@ chispita_draw_all = function()
     if o.visible then o.draw() end
   end
 
+  if chispita_crt then chispita_draw_crt() end
   if chispita_debug_mode then chispita_draw_debug() end
 end

@@ -1,4 +1,4 @@
-chispita_version = "0.14"
+chispita_version = "0.15"
 
 chispita_warned = object end
 
@@ -123,6 +123,16 @@ end
 
 Chispita_draw = function()
   chispita_draw_all()
+end
+
+// Kept here so a project without the chispita_crt file gets a warning
+// instead of an error.
+chispita_draw_crt = function()
+  if Chispita_applyCrt then
+    Chispita_applyCrt()
+  else
+    chispita_warn("chispita_crt is on, but the chispita_crt file isn't in this project.")
+  end
 end
 
 chispita_paused = 0

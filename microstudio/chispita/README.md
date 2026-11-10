@@ -1,6 +1,6 @@
 # Chispita
 
-A small 2D game engine written in [microScript](https://microstudio.dev/documentation/microScript/) for [microStudio](https://microstudio.dev), a browser-based game maker. Current version: **0.14**.
+A small 2D game engine written in [microScript](https://microstudio.dev/documentation/microScript/) for [microStudio](https://microstudio.dev), a browser-based game maker. Current version: **0.15**.
 
 microScript is a small Lua-like language. microStudio projects live in the browser, so the files here are plain-text copies of each source file (`.txt`). Each one is pasted into a microStudio source file of the same name.
 
@@ -15,6 +15,7 @@ microScript is a small Lua-like language. microStudio projects live in the brows
   - Raycasts and area queries.
 - **Tile maps** from the microStudio map editor: solid, one-way and hollow tiles, parallax, and maps that tile endlessly in either direction.
 - **Camera:** follow with smoothing, deadzone, look-ahead, bounds, zoom, shake and draw layers.
+- **CRT effect:** an optional soft CRT look (softened pixel edges, glow around bright colors, darker corners), with no scanlines.
 - **Timers and tweens:** `Chispita_after`, `Chispita_every`, `Chispita_tween`.
 - **Debug mode:** hit box, contact, map cell and camera overlays, plus warnings for likely typos. microScript turns misspelled names into 0 instead of raising an error, so the engine checks for them and prints a warning.
 
@@ -57,6 +58,7 @@ end
 | [`chispita_timers`](engine/chispita_timers.txt) | Timers, tweens, game time |
 | [`chispita_debug`](engine/chispita_debug.txt) | Debug overlays (optional) |
 | [`chispita_helpers`](engine/chispita_helpers.txt) | Math helpers (optional) |
+| [`chispita_crt`](engine/chispita_crt.txt) | Soft CRT screen effect (optional) |
 
 All functions and settings are documented in [CHISPITA_DOCS.txt](CHISPITA_DOCS.txt).
 
