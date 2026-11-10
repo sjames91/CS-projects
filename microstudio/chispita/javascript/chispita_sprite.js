@@ -5,6 +5,9 @@ var physics_off = "off"
 
   // Create a new sprite.
 function chispita_new_sprite(x, y, shape, physics) {
+  // Left out, a position is 0, as in microScript.
+  if (!x) x = 0
+  if (!y) y = 0
 
   // Basic sprite variables
   var s = {}
@@ -392,6 +395,9 @@ function Chispita_addSprite(image, x, y, width, height, physics) {
 
 // Add text
 function Chispita_addText(text, x, y, size, color) {
+  // Left out, a position is 0, as in microScript.
+  if (!x) x = 0
+  if (!y) y = 0
   var t = {}
   t.text = text
   t.x = x

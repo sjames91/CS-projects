@@ -1,4 +1,6 @@
-local min, max, pow = math.min, math.max, math.pow
+local min, max = math.min, math.max
+-- microStudio runs Lua 5.3, which has no math.pow: a ^ b is the same.
+local function pow(a, b) return a ^ b end
 local function sind(a) return math.sin(a * math.pi / 180) end
 local function cosd(a) return math.cos(a * math.pi / 180) end
 

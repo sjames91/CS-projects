@@ -13,7 +13,7 @@ function Chispita_addMap(name, x, y, physics, cell_size)
   if physics and physics ~= physics_on and physics ~= physics_off then
     chispita_warn("Chispita_addMap: physics should be physics_on or physics_off, not " .. tostring(physics) .. ". Using physics_on.")
   end
-  m.x = x or 0
+  m.x = x or 0     -- left out, a position is 0, as in microScript
   m.y = y or 0
   m.cell_size = cell_size
   m.physics = physics ~= physics_off

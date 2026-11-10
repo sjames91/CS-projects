@@ -2,6 +2,9 @@ var chispita_maps = []
 
 // Add maps
 function Chispita_addMap(name, x, y, physics, cell_size) {
+  // Left out, a position is 0, as in microScript.
+  if (!x) x = 0
+  if (!y) y = 0
   var m = {}
   m.id = chispita_next_id
   chispita_next_id += 1

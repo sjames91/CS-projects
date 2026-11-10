@@ -5,6 +5,9 @@ chispita_maps = []
 # Add maps
 def Chispita_addMap(name=None, x=None, y=None, physics=None, cell_size=None):
   global chispita_next_id
+  # Left out, a position is 0, as in microScript.
+  if not x: x = 0
+  if not y: y = 0
   m = chispita_obj()
   m.id = chispita_next_id
   chispita_next_id += 1

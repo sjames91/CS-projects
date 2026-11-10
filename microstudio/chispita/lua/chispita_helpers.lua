@@ -1,4 +1,6 @@
-local min, max, floor, sqrt, cos, sin, atan2, PI = math.min, math.max, math.floor, math.sqrt, math.cos, math.sin, math.atan2, math.pi
+local min, max, floor, sqrt, cos, sin, PI = math.min, math.max, math.floor, math.sqrt, math.cos, math.sin, math.pi
+-- microStudio runs Lua 5.3, where math.atan takes y and x (there is no math.atan2).
+local function atan2(y, x) return math.atan(y, x) end
 local function sind(a) return math.sin(a * math.pi / 180) end
 local function cosd(a) return math.cos(a * math.pi / 180) end
 

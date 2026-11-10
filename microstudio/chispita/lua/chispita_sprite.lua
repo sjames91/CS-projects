@@ -1,4 +1,6 @@
-local abs, min, max, floor, pow = math.abs, math.min, math.max, math.floor, math.pow
+local abs, min, max, floor = math.abs, math.min, math.max, math.floor
+-- microStudio runs Lua 5.3, which has no math.pow: a ^ b is the same.
+local function pow(a, b) return a ^ b end
 local function sind(a) return math.sin(a * math.pi / 180) end
 local function cosd(a) return math.cos(a * math.pi / 180) end
 
@@ -16,6 +18,9 @@ end
 
   -- Create a new sprite.
 function chispita_new_sprite(x, y, shape, physics)
+  -- Left out, a position is 0, as in microScript.
+  x = x or 0
+  y = y or 0
 
   -- Basic sprite variables
   local s = {}
@@ -406,6 +411,9 @@ end
 
 -- Add text
 function Chispita_addText(text, x, y, size, color)
+  -- Left out, a position is 0, as in microScript.
+  x = x or 0
+  y = y or 0
   local t = {}
   t.text = text
   t.x = x

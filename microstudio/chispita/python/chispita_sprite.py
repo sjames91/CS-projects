@@ -27,6 +27,9 @@ physics_off = "off"
 # Create a new sprite.
 def chispita_new_sprite(x=None, y=None, shape=None, physics=None):
   global chispita_next_id, chispita_sprite_fields
+  # Left out, a position is 0, as in microScript.
+  if not x: x = 0
+  if not y: y = 0
 
   # Basic sprite variables
   s = chispita_obj()
@@ -366,6 +369,9 @@ def Chispita_addSprite(image=None, x=None, y=None, width=None, height=None, phys
 
 # Add text
 def Chispita_addText(text=None, x=None, y=None, size=None, color=None):
+  # Left out, a position is 0, as in microScript.
+  if not x: x = 0
+  if not y: y = 0
   t = chispita_obj()
   t.text = text
   t.x = x
