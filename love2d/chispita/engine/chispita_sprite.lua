@@ -130,79 +130,9 @@ function chispita_new_sprite(x, y, shape, physics)
     chispita_draw_sprite(s)
   end
 
-  if not chispita_sprite_fields then
-    chispita_sprite_fields = {}
-    for key in pairs(s) do
-      chispita_sprite_fields[key] = true
-    end
-    for _, key in ipairs({ "width", "height", "radius", "hit_width", "hit_height", "hit_radius", "hurt_width", "hurt_height", "hurt_radius", "removed", "left", "right", "top", "bottom", "was_hurting" }) do
-      chispita_sprite_fields[key] = true
-    end
-  end
-
   table.insert(chispita_sprites, s)
   chispita_add_drawable(s)
   return s
-end
-
-chispita_sprite_fields = false
-chispita_field_verdicts = {}
-chispita_field_check_index = 1
-
--- True when two names are one or two letters apart (a likely typo).
-function chispita_close_name(a, b)
-  if #a < 4 or #b < 4 then return false end
-  local limit = 2
-  if #b < 5 then limit = 1 end
-  if abs(#a - #b) > limit then return false end
-  -- previous[j + 1] is the distance from the start of a to the first j letters of b
-  local previous = {}
-  for j = 0, #b do
-    previous[j + 1] = j
-  end
-  for i = 1, #a do
-    local current = { i }
-    local letter = a:sub(i, i)
-    for j = 1, #b do
-      local cost = 1
-      if letter == b:sub(j, j) then cost = 0 end
-      current[j + 1] = min(min(current[j] + 1, previous[j + 1] + 1), previous[j] + cost)
-    end
-    previous = current
-  end
-  return previous[#b + 1] <= limit
-end
-
-function chispita_check_fields(s)
-  for key in pairs(s) do
-    if type(key) == "string" and not chispita_sprite_fields[key] then
-      local verdict = chispita_field_verdicts[key]
-      if not verdict then
-        verdict = "ok"
-        for known in pairs(chispita_sprite_fields) do
-          if chispita_close_name(key, known) then
-            verdict = known
-            break
-          end
-        end
-        chispita_field_verdicts[key] = verdict
-      end
-      if verdict ~= "ok" then
-        chispita_warn("sprite #" .. s.id .. " has '" .. key .. "', which isn't a sprite setting. Did you mean '" .. verdict .. "'? (If it's your own variable, ignore this.)")
-        chispita_field_verdicts[key] = "ok"
-      end
-    end
-  end
-end
-
-function chispita_check_sprite_fields()
-  local n = #chispita_sprites
-  if n == 0 or not chispita_sprite_fields then return end
-  for k = 1, min(4, n) do
-    if chispita_field_check_index > n then chispita_field_check_index = 1 end
-    chispita_check_fields(chispita_sprites[chispita_field_check_index])
-    chispita_field_check_index = chispita_field_check_index + 1
-  end
 end
 
 function Chispita_addRect(x, y, width, height, physics)

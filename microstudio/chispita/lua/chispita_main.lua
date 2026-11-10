@@ -107,7 +107,6 @@ function Chispita_update(dt)
   chispita_dt = dt
   chispita_time = chispita_time + dt
   chispita_begin_frame()
-  chispita_check_sprite_fields()
 
   local steps = max(chispita_substeps, chispita_needed_substeps(dt))
   steps = max(1, min(steps, max(chispita_substeps, chispita_max_substeps)))

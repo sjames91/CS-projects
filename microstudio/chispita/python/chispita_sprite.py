@@ -26,7 +26,7 @@ physics_off = "off"
 
 # Create a new sprite.
 def chispita_new_sprite(x=None, y=None, shape=None, physics=None):
-  global chispita_next_id, chispita_sprite_fields
+  global chispita_next_id
   # Left out, a position is 0, as in microScript.
   if not x: x = 0
   if not y: y = 0
@@ -143,62 +143,9 @@ def chispita_new_sprite(x=None, y=None, shape=None, physics=None):
     chispita_draw_sprite(s)
   s.draw = draw
 
-  if not chispita_sprite_fields:
-    chispita_sprite_fields = chispita_obj()
-    for key in s:
-      chispita_sprite_fields[key] = 1
-    for key in ["width", "height", "radius", "hit_width", "hit_height", "hit_radius", "hurt_width", "hurt_height", "hurt_radius", "removed", "was_hurting"]:
-      chispita_sprite_fields[key] = 1
-
   chispita_sprites.append(s)
   chispita_add_drawable(s)
   return s
-
-chispita_sprite_fields = 0
-chispita_field_verdicts = chispita_obj()
-chispita_field_check_index = 0
-
-def chispita_close_name(a=None, b=None):
-  if len(a) < 4 or len(b) < 4: return 0
-  limit = 2
-  if len(b) < 5: limit = 1
-  if abs(len(a) - len(b)) > limit: return 0
-  previous = []
-  for j in range(len(b) + 1):
-    previous.append(j)
-  for i in range(1, len(a) + 1):
-    current = [i]
-    letter = a[i - 1:i]
-    for j in range(1, len(b) + 1):
-      cost = 1
-      if letter == b[j - 1:j]: cost = 0
-      current.append(min(min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + cost))
-    previous = current
-  return previous[len(b)] <= limit
-
-def chispita_check_fields(s=None):
-  for key in s:
-    if chispita_sprite_fields[key]: continue
-    verdict = chispita_field_verdicts[key]
-    if not verdict:
-      verdict = "ok"
-      for known in chispita_sprite_fields:
-        if chispita_close_name(key, known):
-          verdict = known
-          break
-      chispita_field_verdicts[key] = verdict
-    if verdict != "ok":
-      chispita_warn("sprite #" + chispita_str(s.id) + " has '" + chispita_str(key) + "', which isn't a sprite setting. Did you mean '" + chispita_str(verdict) + "'? (If it's your own variable, ignore this.)")
-      chispita_field_verdicts[key] = "ok"
-
-def chispita_check_sprite_fields():
-  global chispita_field_check_index
-  n = len(chispita_sprites)
-  if n == 0 or not chispita_sprite_fields: return
-  for k in range(1, min(4, n) + 1):
-    if chispita_field_check_index >= n: chispita_field_check_index = 0
-    chispita_check_fields(chispita_sprites[chispita_field_check_index])
-    chispita_field_check_index += 1
 
 def Chispita_addRect(x=None, y=None, width=None, height=None, physics=None):
   if width <= 0 or height <= 0:

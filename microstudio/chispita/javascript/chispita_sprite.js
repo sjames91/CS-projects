@@ -123,76 +123,9 @@ function chispita_new_sprite(x, y, shape, physics) {
     chispita_draw_sprite(s)
   }
 
-  if (!chispita_sprite_fields) {
-    chispita_sprite_fields = {}
-    for (var key in s) {
-      chispita_sprite_fields[key] = 1
-    }
-    for (var key of ["width", "height", "radius", "hit_width", "hit_height", "hit_radius", "hurt_width", "hurt_height", "hurt_radius", "removed", "was_hurting"]) {
-      chispita_sprite_fields[key] = 1
-    }
-  }
-
   chispita_sprites.push(s)
   chispita_add_drawable(s)
   return s
-}
-
-var chispita_sprite_fields = 0
-var chispita_field_verdicts = {}
-var chispita_field_check_index = 0
-
-function chispita_close_name(a, b) {
-  if (a.length < 4 || b.length < 4) return 0
-  var limit = 2
-  if (b.length < 5) limit = 1
-  if (Math.abs(a.length - b.length) > limit) return 0
-  var previous = []
-  for (var j = 0; j <= b.length; j++) {
-    previous.push(j)
-  }
-  for (var i = 1; i <= a.length; i++) {
-    var current = [i]
-    var letter = a.substring(i - 1, i)
-    for (var j = 1; j <= b.length; j++) {
-      var cost = 1
-      if (letter == b.substring(j - 1, j)) cost = 0
-      current.push(Math.min(Math.min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + cost))
-    }
-    previous = current
-  }
-  return previous[b.length] <= limit
-}
-
-function chispita_check_fields(s) {
-  for (var key in s) {
-    if (chispita_sprite_fields[key]) continue
-    var verdict = chispita_field_verdicts[key]
-    if (!verdict) {
-      verdict = "ok"
-      for (var known in chispita_sprite_fields) {
-        if (chispita_close_name(key, known)) {
-          verdict = known
-          break
-        }
-      }
-      chispita_field_verdicts[key] = verdict
-    }
-    if (verdict != "ok") {
-      chispita_warn("sprite #" + s.id + " has '" + key + "', which isn't a sprite setting. Did you mean '" + verdict + "'? (If it's your own variable, ignore this.)")
-      chispita_field_verdicts[key] = "ok"
-    }
-  }
-}
-
-function chispita_check_sprite_fields() {
-  var n = chispita_sprites.length
-  if (n == 0 || !chispita_sprite_fields) return
-  for (var k = 1; k <= Math.min(4, n); k++) {
-    if (chispita_field_check_index >= n) chispita_field_check_index = 0
-    chispita_check_fields(chispita_sprites[chispita_field_check_index])
-    chispita_field_check_index += 1
-  }
 }
 
 function Chispita_addRect(x, y, width, height, physics) {

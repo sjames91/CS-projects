@@ -109,7 +109,6 @@ function Chispita_update(dt) {
   chispita_dt = dt
   chispita_time += dt
   chispita_begin_frame()
-  chispita_check_sprite_fields()
 
   var steps = Math.max(chispita_substeps, chispita_needed_substeps(dt))
   steps = Math.max(1, Math.min(steps, Math.max(chispita_substeps, chispita_max_substeps)))

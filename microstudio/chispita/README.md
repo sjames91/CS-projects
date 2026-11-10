@@ -16,7 +16,8 @@ microScript is a small Lua-like language. microStudio projects live in the brows
 - **Tile maps** from the microStudio map editor: solid, one-way and hollow tiles, parallax, and maps that tile endlessly in either direction.
 - **Camera:** follow with smoothing, deadzone, look-ahead, bounds, zoom, shake and draw layers.
 - **Timers and tweens:** `Chispita_after`, `Chispita_every`, `Chispita_tween`.
-- **Debug mode:** hit box, contact, map cell and camera overlays, plus warnings for likely typos. microScript turns misspelled names into 0 instead of raising an error, so the engine checks for them and prints a warning.
+- **Debug mode:** hit box, contact, map cell and camera overlays, an inspector, dragging and frame stepping.
+- **Warnings:** microScript turns misspelled names into 0 instead of raising an error, so the engine prints a warning in the console for likely mistakes, like a sprite or map name that doesn't exist.
 
 ## A minimal game
 

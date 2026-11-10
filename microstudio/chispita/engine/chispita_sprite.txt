@@ -114,78 +114,11 @@ chispita_new_sprite = function(x,y,shape,physics)
     chispita_draw_sprite(this)
   end
   
-  if not chispita_sprite_fields then
-    chispita_sprite_fields = object end
-    for key in s
-      chispita_sprite_fields[key] = 1
-    end
-    for key in ["width", "height", "radius", "hit_width", "hit_height", "hit_radius", "hurt_width", "hurt_height", "hurt_radius", "removed", "left", "right", "top", "bottom", "was_hurting"]
-      chispita_sprite_fields[key] = 1
-    end
-  end
-
   chispita_sprites.push(s)
   chispita_add_drawable(s)
   return s
 end
 
-chispita_sprite_fields = 0
-chispita_field_verdicts = object end
-chispita_field_check_index = 0
-
-chispita_close_name = function(a, b)
-  if a.length < 4 or b.length < 4 then return 0 end
-  local limit = 2
-  if b.length < 5 then limit = 1 end
-  if abs(a.length - b.length) > limit then return 0 end
-  local previous = []
-  for j = 0 to b.length by 1
-    previous.push(j)
-  end
-  for i = 1 to a.length by 1
-    local current = [i]
-    local letter = a.substring(i - 1, i)
-    for j = 1 to b.length by 1
-      local cost = 1
-      if letter == b.substring(j - 1, j) then cost = 0 end
-      current.push(min(min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + cost))
-    end
-    previous = current
-  end
-  return previous[b.length] <= limit
-end
-
-chispita_check_fields = function(s)
-  for key in s
-    if chispita_sprite_fields[key] then continue end
-    local verdict = chispita_field_verdicts[key]
-    if not verdict then
-      verdict = "ok"
-      for known in chispita_sprite_fields
-        if chispita_close_name(key, known) then
-          verdict = known
-          break
-        end
-      end
-      chispita_field_verdicts[key] = verdict
-    end
-    if verdict != "ok" then
-      chispita_warn("sprite #" + s.id + " has '" + key + "', which isn't a sprite setting. Did you mean '" + verdict + "'? (If it's your own variable, ignore this.)")
-      chispita_field_verdicts[key] = "ok"
-    end
-  end
-end
-
-chispita_check_sprite_fields = function()
-  local n = chispita_sprites.length
-  if n == 0 or not chispita_sprite_fields then return end
-  for k = 1 to min(4, n) by 1
-    if chispita_field_check_index >= n then chispita_field_check_index = 0 end
-    chispita_check_fields(chispita_sprites[chispita_field_check_index])
-    chispita_field_check_index += 1
-  end
-end
-  
 Chispita_addRect = function(x, y, width, height, physics)
   if width <= 0 or height <= 0 then
     chispita_warn("Chispita_addRect needs a width and height above 0 (got " + width + " by " + height + ").")

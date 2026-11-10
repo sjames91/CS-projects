@@ -108,12 +108,8 @@ about things like:
   - a sprite, map or animation name that doesn't exist
   - a size of 0 or less, a mass of 0 or less
   - passing 0 (nothing) where a sprite or map was expected
-  - a sprite variable that looks like a typo of a real one:
-      player.kinematc = 1
-      Chispita: sprite #3 has 'kinematc', which isn't a sprite setting.
-                Did you mean 'kinematic'?
-    Your own variables (player.jumps, enemy.state) are fine. If a name of
-    yours happens to look like a real one, just ignore the warning.
+Misspelled sprite variables aren't caught: player.kinematc = 1 just makes
+a new variable of your own, the same as player.jumps = 2 would.
 If something doesn't work, check the console first.
 
 
