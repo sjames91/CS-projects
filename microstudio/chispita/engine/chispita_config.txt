@@ -25,12 +25,17 @@ chispita_config = function()
 
   // CRT effect (used only by the optional chispita_crt file)
   chispita_crt = 1                   // 0 = Chispita_applyCrt does nothing
-  chispita_crt_soften = 0.5          // how much hard pixel edges blur, 0 to 1
-  chispita_crt_glow = 0.5            // glow around bright colors, 0 to 1
-  chispita_crt_glow_size = 1         // how far the glow spreads, 1 = normal
+  chispita_crt_pixel_size = 1        // units per art pixel
+  chispita_crt_soften = 0.5          // how much pixels blend into each other, 0 to 1
+  chispita_crt_beam = 0.5            // how much wider bright pixels spread, 0 to 1
+  chispita_crt_glow = 0.3            // glow around bright things, 0 to 1
+  chispita_crt_glow_size = 1         // how far the glow spreads, 0.3 to 3
   chispita_crt_glow_threshold = 0.6  // how bright a color must be to glow, 0 to 1
-  chispita_crt_vignette = 0.3        // darker corners, 0 to 1
-  chispita_crt_curve = 0             // bulge like a curved TV screen, 0 to 1
+  chispita_crt_brightness = 1        // 1 = unchanged
+  chispita_crt_contrast = 1          // 1 = unchanged
+  chispita_crt_saturation = 1        // 1 = unchanged, 0 = black and white
+  chispita_crt_warmth = 0            // -1 cooler to 1 warmer
+  chispita_crt_grain = 0             // film grain, 0 to 1
 
   // Debug
   chispita_debug_mode = 0
