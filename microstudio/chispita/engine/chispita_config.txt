@@ -23,11 +23,14 @@ chispita_config = function()
   chispita_background = "rgb(0,0,0)"
   chispita_max_map_copies = 400      // most copies of one tiled map drawn per frame
 
-  // Screen effect (needs chispita_crt)
-  chispita_crt = 0                   // 1 = soft CRT look at the end of Chispita_draw
-  chispita_crt_soften = 0.5          // blurs hard pixel edges, 0 to 1
-  chispita_crt_glow = 0.6            // glow around bright colors, 0 to 1
+  // CRT effect (used only by the optional chispita_crt file)
+  chispita_crt = 1                   // 0 = Chispita_applyCrt does nothing
+  chispita_crt_soften = 0.5          // how much hard pixel edges blur, 0 to 1
+  chispita_crt_glow = 0.5            // glow around bright colors, 0 to 1
+  chispita_crt_glow_size = 1         // how far the glow spreads, 1 = normal
+  chispita_crt_glow_threshold = 0.6  // how bright a color must be to glow, 0 to 1
   chispita_crt_vignette = 0.3        // darker corners, 0 to 1
+  chispita_crt_curve = 0             // bulge like a curved TV screen, 0 to 1
 
   // Debug
   chispita_debug_mode = 0

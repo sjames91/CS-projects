@@ -1,11 +1,37 @@
-// Soft CRT look: blurs the hard edges of pixels a little, adds a glow
-// around bright colors and darkens the corners. No scanlines.
-// Settings are in chispita_config: chispita_crt, chispita_crt_soften,
-// chispita_crt_glow and chispita_crt_vignette.
+// CRT effect for Chispita (optional file)
 //
-// microScript can't read the screen's pixels, so the work is done in
-// JavaScript on microStudio's screen canvas. It needs the default
-// microStudio graphics (not Pixi, M2D, M3D or Babylon).
+// Gives pixel art the softer look of an old CRT TV, without scanlines:
+// pixel edges blur a little (more sideways than up and down), bright
+// colors glow, the corners darken, and the screen can bulge.
+//
+// Use: call Chispita_applyCrt() at the end of your draw function.
+// Everything drawn before the call gets the effect.
+//
+//   draw = function()
+//     Chispita_draw()
+//     Chispita_applyCrt()
+//   end
+//
+// Settings are in chispita_config, all from 0 to 1 unless noted:
+//   chispita_crt                 0 = off, 1 = on
+//   chispita_crt_soften          how much hard pixel edges blur
+//   chispita_crt_glow            glow strength around bright colors
+//   chispita_crt_glow_size       how far the glow spreads (1 = normal, can go higher)
+//   chispita_crt_glow_threshold  how bright a color must be to glow
+//   chispita_crt_vignette        darker corners
+//   chispita_crt_curve           screen bulge (0 = flat). The corners curve
+//                                away into black, and the mouse and touch
+//                                positions don't follow the bulge.
+// They can be changed at any time, even every frame.
+//
+// How it works: microScript can't read the screen's pixels, so this runs
+// as a WebGL shader in JavaScript (through system.javascript). It draws
+// on a second canvas laid over the microStudio screen, which clicks and
+// touches pass through. If the game stops calling Chispita_applyCrt, that
+// canvas hides itself. Without WebGL it falls back to a simpler version
+// with no curve. It needs the default microStudio graphics (not Pixi,
+// M2D, M3D or Babylon); if it can't run, it prints one warning and the
+// game draws as normal.
 
 chispita_crt_ready = 0
 chispita_crt_failed = 0
@@ -13,17 +39,295 @@ chispita_crt_failed = 0
 chispita_crt_setup = function()
   chispita_crt_ready = 1
   system.javascript('
+  window.chispitaCrtHide = function() {
+    var st = window.chispitaCrtState;
+    if (st && st.overlay && st.shown) {
+      st.overlay.style.display = "none";
+      st.shown = false;
+    }
+  };
+  
   window.chispitaCrt = function(g) {
     var p = window.player;
     if (!p || !p.runtime || !p.runtime.screen) return 0;
     var src = p.runtime.screen.canvas;
-    var ctx = p.runtime.screen.context;
     var W = src.width, H = src.height;
-    if (!ctx || W < 2 || H < 2) return 0;
+    if (W < 2 || H < 2 || !src.parentNode) return 0;
+  
+    var num = function(v, d) { return (typeof v == "number" && isFinite(v)) ? v : d; };
+    var clamp = function(v) { return Math.max(0, Math.min(1, v)); };
+    var set = {
+      soften: clamp(num(g.chispita_crt_soften, 0.5)),
+      glow: clamp(num(g.chispita_crt_glow, 0.5)),
+      size: Math.max(0.1, num(g.chispita_crt_glow_size, 1)),
+      threshold: clamp(num(g.chispita_crt_glow_threshold, 0.6)),
+      vignette: clamp(num(g.chispita_crt_vignette, 0.3)),
+      curve: clamp(num(g.chispita_crt_curve, 0))
+    };
+  
     var st = window.chispitaCrtState;
-    if (!st) {
-      st = window.chispitaCrtState = { bufs: {} };
+    if (!st) st = window.chispitaCrtState = {};
+    if (!st.gl && !st.noGl) {
+      try { st.gl = chispitaCrtMakeGl(st); } catch (e) { st.gl = null; }
+      if (!st.gl) st.noGl = true;
     }
+    if (st.gl && st.gl.isContextLost()) {
+      // The GPU dropped the context: start over next frame.
+      if (st.overlay && st.overlay.parentNode) st.overlay.parentNode.removeChild(st.overlay);
+      st.gl = null; st.overlay = null; st.shown = false;
+      return 1;
+    }
+    if (!st.gl) return chispitaCrt2d(p.runtime.screen, set);
+  
+    // Keep the overlay exactly on top of the microStudio canvas.
+    var o = st.overlay;
+    if (o.parentNode != src.parentNode || o.previousSibling != src) {
+      src.parentNode.insertBefore(o, src.nextSibling);
+    }
+    var r = src.getBoundingClientRect();
+    var place = r.left + "," + r.top + "," + r.width + "," + r.height;
+    if (place != st.place) {
+      st.place = place;
+      o.style.left = r.left + "px";
+      o.style.top = r.top + "px";
+      o.style.width = r.width + "px";
+      o.style.height = r.height + "px";
+    }
+    chispitaCrtDrawGl(st, src, set);
+    if (!st.shown) { o.style.display = "block"; st.shown = true; }
+  
+    // If the game stops calling Chispita_applyCrt, hide the overlay so an old
+    // frame is never left covering the game.
+    st.last = performance.now();
+    if (!st.watching) {
+      st.watching = true;
+      var watch = function() {
+        if (st.shown && performance.now() - st.last > 100) window.chispitaCrtHide();
+        requestAnimationFrame(watch);
+      };
+      requestAnimationFrame(watch);
+    }
+    return 1;
+  };
+  
+  window.chispitaCrtMakeGl = function(st) {
+    var o = document.createElement("canvas");
+    o.style.position = "fixed";
+    o.style.pointerEvents = "none";
+    o.style.display = "none";
+    o.style.margin = "0";
+    var gl = o.getContext("webgl", { alpha: false, antialias: false, depth: false, premultipliedAlpha: false });
+    if (!gl) return null;
+    st.overlay = o;
+  
+    var vs = `
+      attribute vec2 pos;
+      varying vec2 uv;
+      void main() { uv = pos * 0.5 + 0.5; gl_Position = vec4(pos, 0.0, 1.0); }`;
+  
+    // Shared helpers. Colors are blurred and added in linear light, the way
+    // light really mixes, then turned back for the screen.
+    var head = `
+      precision mediump float;
+      varying vec2 uv;
+      uniform sampler2D tex;
+      uniform vec2 texel;
+      vec3 lin(vec3 c) { return c * c; }
+      vec3 unlin(vec3 c) { return sqrt(max(c, 0.0)); }`;
+  
+    // Shrinks the frame and keeps only the colors bright enough to glow.
+    var brightFs = head + `
+      uniform float threshold;
+      void main() {
+        vec3 c = lin(texture2D(tex, uv + texel * vec2(-0.25, -0.25)).rgb)
+               + lin(texture2D(tex, uv + texel * vec2( 0.25, -0.25)).rgb)
+               + lin(texture2D(tex, uv + texel * vec2(-0.25,  0.25)).rgb)
+               + lin(texture2D(tex, uv + texel * vec2( 0.25,  0.25)).rgb);
+        c *= 0.25;
+        float l = max(c.r, max(c.g, c.b));
+        float t = threshold * threshold;
+        float k = clamp((l - t) / max(1.0 - t, 0.001), 0.0, 1.0);
+        gl_FragColor = vec4(unlin(c * k), 1.0);
+      }`;
+  
+    // Gaussian blur in one direction.
+    var blurFs = head + `
+      uniform vec2 dir;
+      void main() {
+        vec3 c = lin(texture2D(tex, uv).rgb) * 0.2270;
+        c += lin(texture2D(tex, uv + dir * 1.3846).rgb) * 0.3162;
+        c += lin(texture2D(tex, uv - dir * 1.3846).rgb) * 0.3162;
+        c += lin(texture2D(tex, uv + dir * 3.2308).rgb) * 0.0703;
+        c += lin(texture2D(tex, uv - dir * 3.2308).rgb) * 0.0703;
+        gl_FragColor = vec4(unlin(c), 1.0);
+      }`;
+  
+    // The final picture: curve, soft beam, glow, vignette.
+    var finalFs = head + `
+      uniform sampler2D glowTex;
+      uniform vec2 beam;
+      uniform float glow;
+      uniform float vignette;
+      uniform float curve;
+      uniform float aspect;
+      void main() {
+        vec2 p = uv * 2.0 - 1.0;
+        p.x *= aspect;
+        float k = curve * 0.12;
+        p *= 1.0 + k * dot(p, p);
+        // The middle of each edge stays put; the corners curve away into black.
+        p.x /= (1.0 + k * aspect * aspect) * aspect;
+        p.y /= 1.0 + k;
+        vec2 q = p * 0.5 + 0.5;
+        if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) {
+          gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+          return;
+        }
+  
+        // Each pixel spreads like a CRT beam: wider sideways than up and down.
+        vec2 bx = vec2(beam.x, 0.0);
+        vec2 by = vec2(0.0, beam.y);
+        vec3 c = lin(texture2D(tex, q).rgb) * 0.2;
+        c += (lin(texture2D(tex, q + bx).rgb) + lin(texture2D(tex, q - bx).rgb)) * 0.15;
+        c += (lin(texture2D(tex, q + bx * 2.0).rgb) + lin(texture2D(tex, q - bx * 2.0).rgb)) * 0.05;
+        c += (lin(texture2D(tex, q + by).rgb) + lin(texture2D(tex, q - by).rgb)) * 0.1;
+        c += (lin(texture2D(tex, q + bx + by).rgb) + lin(texture2D(tex, q - bx - by).rgb)
+            + lin(texture2D(tex, q + bx - by).rgb) + lin(texture2D(tex, q - bx + by).rgb)) * 0.05;
+  
+        vec3 b = lin(texture2D(glowTex, q).rgb) * glow;
+        c = c + b * (1.0 - c);
+  
+        vec2 e = q * (1.0 - q);
+        float v = pow(clamp(e.x * e.y * 16.0, 0.0, 1.0), 0.3);
+        c *= mix(1.0, v, vignette);
+  
+        if (curve > 0.0) {
+          vec2 d = min(q, 1.0 - q) * vec2(aspect, 1.0);
+          float edge = clamp(min(d.x, d.y) / (0.004 + 0.006 * curve), 0.0, 1.0);
+          c *= edge;
+        }
+        gl_FragColor = vec4(unlin(c), 1.0);
+      }`;
+  
+    var shader = function(type, code) {
+      var s = gl.createShader(type);
+      gl.shaderSource(s, code);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    var vsh = shader(gl.VERTEX_SHADER, vs);
+    var program = function(fs, uniforms) {
+      var pr = gl.createProgram();
+      gl.attachShader(pr, vsh);
+      gl.attachShader(pr, shader(gl.FRAGMENT_SHADER, fs));
+      gl.bindAttribLocation(pr, 0, "pos");
+      gl.linkProgram(pr);
+      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+      var u = { program: pr };
+      uniforms.forEach(function(n) { u[n] = gl.getUniformLocation(pr, n); });
+      return u;
+    };
+    st.bright = program(brightFs, ["tex", "texel", "threshold"]);
+    st.blur = program(blurFs, ["tex", "texel", "dir"]);
+    st.final = program(finalFs, ["tex", "texel", "glowTex", "beam", "glow", "vignette", "curve", "aspect"]);
+  
+    var buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  
+    var texture = function() {
+      var t = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    };
+    st.frame = texture();
+    st.glowA = { tex: texture(), fb: gl.createFramebuffer() };
+    st.glowB = { tex: texture(), fb: gl.createFramebuffer() };
+    st.glowW = 0; st.glowH = 0;
+    st.texture = texture;
+    return gl;
+  };
+  
+  window.chispitaCrtDrawGl = function(st, src, set) {
+    var gl = st.gl, o = st.overlay;
+    var W = src.width, H = src.height;
+    if (o.width != W || o.height != H) { o.width = W; o.height = H; }
+    // One microStudio unit in screen pixels (the screen is about 200 units tall).
+    var unit = Math.min(W, H) / 200;
+  
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, st.frame);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+  
+    // The glow is worked out on a small copy, about one texel per unit.
+    var gw = Math.max(4, Math.round(W / unit)), gh = Math.max(4, Math.round(H / unit));
+    if (gw != st.glowW || gh != st.glowH) {
+      st.glowW = gw; st.glowH = gh;
+      [st.glowA, st.glowB].forEach(function(t) {
+        gl.bindTexture(gl.TEXTURE_2D, t.tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gw, gh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t.tex, 0);
+      });
+    }
+  
+    if (set.glow > 0) {
+      gl.viewport(0, 0, gw, gh);
+      gl.useProgram(st.bright.program);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, st.glowA.fb);
+      gl.bindTexture(gl.TEXTURE_2D, st.frame);
+      gl.uniform1i(st.bright.tex, 0);
+      gl.uniform2f(st.bright.texel, 1 / gw, 1 / gh);
+      gl.uniform1f(st.bright.threshold, set.threshold);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+  
+      // Blur across, then down, twice: the second pass spreads wider.
+      gl.useProgram(st.blur.program);
+      gl.uniform1i(st.blur.tex, 0);
+      gl.uniform2f(st.blur.texel, 1 / gw, 1 / gh);
+      var passes = [[1, 0, st.glowA, st.glowB], [0, 1, st.glowB, st.glowA], [2, 0, st.glowA, st.glowB], [0, 2, st.glowB, st.glowA]];
+      passes.forEach(function(s) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s[3].fb);
+        gl.bindTexture(gl.TEXTURE_2D, s[2].tex);
+        gl.uniform2f(st.blur.dir, s[0] * set.size / gw, s[1] * set.size / gh);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      });
+    }
+  
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, W, H);
+    gl.useProgram(st.final.program);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, st.glowA.tex);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, st.frame);
+    gl.uniform1i(st.final.tex, 0);
+    gl.uniform1i(st.final.glowTex, 1);
+    gl.uniform2f(st.final.texel, 1 / W, 1 / H);
+    gl.uniform2f(st.final.beam, set.soften * unit * 0.5 / W, set.soften * unit * 0.3 / H);
+    gl.uniform1f(st.final.glow, set.glow);
+    gl.uniform1f(st.final.vignette, set.vignette);
+    gl.uniform1f(st.final.curve, set.curve);
+    gl.uniform1f(st.final.aspect, W / H);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  
+  // Used only when the browser has no WebGL: a simpler version drawn
+  // straight onto the microStudio canvas.
+  window.chispitaCrt2d = function(screen, set) {
+    var src = screen.canvas, ctx = screen.context;
+    var W = src.width, H = src.height;
+    if (!ctx) return 0;
+    var st = window.chispitaCrtState;
+    if (!st.bufs) st.bufs = {};
     var buf = function(name, w, h, quality) {
       w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
       var b = st.bufs[name];
@@ -39,60 +343,45 @@ chispita_crt_setup = function()
       b.c.imageSmoothingQuality = quality;
       return b;
     };
-    var num = function(v, d) { return (typeof v == "number" && isFinite(v)) ? v : d; };
     var unit = Math.min(W, H) / 200;
-    var soften = Math.max(0, num(g.chispita_crt_soften, 0));
-    var glow = Math.max(0, num(g.chispita_crt_glow, 0));
-    var vignette = Math.max(0, num(g.chispita_crt_vignette, 0));
-    if (soften <= 0 && glow <= 0 && vignette <= 0) return 1;
-  
-    // A smaller copy of the frame, drawn back stretched, blurs the hard pixel
-    // edges. Its pixels are wider than tall, since a CRT smears sideways more.
     var soft = null, bloom = null;
-    if (soften > 0 || glow > 0) {
+    if (set.soften > 0 || set.glow > 0) {
       soft = buf("soft", W / unit, H / (unit * 0.5), "high");
       soft.c.drawImage(src, 0, 0, soft.width, soft.height);
     }
-    if (glow > 0) {
-      // Halve the soft copy step by step so the glow is smooth, not blocky.
+    if (set.glow > 0) {
       var from = soft, level = 0;
-      while (from.height > 24 && W / from.width < unit * 6 && level < 8) {
+      while (from.height > 24 && W / from.width < unit * 6 * set.size && level < 8) {
         var b = buf("glow" + level, from.width / 2, from.height / 2, "low");
         b.c.drawImage(from, 0, 0, b.width, b.height);
         from = b; level++;
       }
       bloom = from;
-      // Multiplying the glow by itself keeps bright colors and drops dark ones.
       bloom.c.globalCompositeOperation = "multiply";
       bloom.c.drawImage(bloom, 0, 0);
       bloom.c.drawImage(bloom, 0, 0);
     }
-  
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.globalCompositeOperation = "source-over";
-    if (soft && soften > 0) {
-      ctx.globalAlpha = Math.min(1, soften);
+    if (soft && set.soften > 0) {
+      ctx.globalAlpha = set.soften;
       ctx.drawImage(soft, 0, 0, W, H);
     }
     if (bloom) {
-      // "screen" brightens like light does, without blowing colors out to white.
       ctx.globalCompositeOperation = "screen";
-      ctx.globalAlpha = Math.min(1, glow);
+      ctx.globalAlpha = set.glow;
       ctx.drawImage(bloom, 0, 0, bloom.width, bloom.height, 0, 0, W, H);
       ctx.globalCompositeOperation = "source-over";
     }
-    if (vignette > 0) {
-      if (!st.vig || st.vigW != W || st.vigH != H || st.vigA != vignette) {
-        var r = Math.sqrt(W * W + H * H) / 2;
-        var gr = ctx.createRadialGradient(W / 2, H / 2, r * 0.45, W / 2, H / 2, r);
-        gr.addColorStop(0, "rgba(0,0,0,0)");
-        gr.addColorStop(1, "rgba(0,0,0," + Math.min(1, vignette) + ")");
-        st.vig = gr; st.vigW = W; st.vigH = H; st.vigA = vignette;
-      }
+    if (set.vignette > 0) {
+      var rr = Math.sqrt(W * W + H * H) / 2;
+      var gr = ctx.createRadialGradient(W / 2, H / 2, rr * 0.45, W / 2, H / 2, rr);
+      gr.addColorStop(0, "rgba(0,0,0,0)");
+      gr.addColorStop(1, "rgba(0,0,0," + set.vignette + ")");
       ctx.globalAlpha = 1;
-      ctx.fillStyle = st.vig;
+      ctx.fillStyle = gr;
       ctx.fillRect(0, 0, W, H);
     }
     ctx.restore();
@@ -103,6 +392,10 @@ end
 
 Chispita_applyCrt = function()
   if chispita_crt_failed then return end
+  if not chispita_crt then
+    if chispita_crt_ready then system.javascript("window.chispitaCrtHide()") end
+    return
+  end
   if not chispita_crt_ready then chispita_crt_setup() end
   if not system.javascript("return window.chispitaCrt ? window.chispitaCrt(global) : 0") then
     chispita_crt_failed = 1

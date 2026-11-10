@@ -1,13 +1,13 @@
 ================================================================================
                         CHISPITA ENGINE - microStudio edition
                                   Documentation
-                                  Version 0.15
+                                  Version 0.14
 ================================================================================
 
 Chispita is a small 2D engine written in microScript for microStudio. It
 gives you sprites (rects, circles and images), physics and collisions, tile
-maps, a camera, text, particles, animated sprite sheets, timers, a soft CRT
-screen effect, a debug mode, and a set of math helpers.
+maps, a camera, text, particles, animated sprite sheets, timers, a debug
+mode, and a set of math helpers.
 
 This guide lists every function and variable a game can use, in the order
 you'll usually meet them.
@@ -19,7 +19,7 @@ CONTENTS
   4.  Sprites
   5.  Collisions and events
   6.  Maps
-  7.  Camera, drawing layers and the CRT effect
+  7.  Camera and drawing layers
   8.  Timers and time
   9.  Debug mode
   10. Helpers
@@ -30,7 +30,7 @@ CONTENTS
 1. GETTING STARTED
 --------------------------------------------------------------------------------
 
-The engine is 10 text files in the "engine" folder:
+The engine is 9 text files in the "engine" folder:
 
   chispita_config      settings (gravity, friction, mode, ...)
   chispita_main        Chispita_init, Chispita_update, Chispita_draw
@@ -41,7 +41,6 @@ The engine is 10 text files in the "engine" folder:
   chispita_timers      timers, tweens and game time
   chispita_debug       debug mode (optional, leave it out of a finished game)
   chispita_helpers     math helpers (optional)
-  chispita_crt         soft CRT screen effect (optional)
 
 To add it to a microStudio project:
 
@@ -216,12 +215,6 @@ own variables: your game can have its own "mode" or "gravity".
   chispita_max_map_copies = 400
       Most copies of one tiled map drawn per frame. A map too small for
       the zoom is drawn once instead, with a warning.
-  chispita_crt = 0
-      1 = soft CRT look over the whole screen (section 7, THE CRT EFFECT).
-  chispita_crt_soften = 0.5
-  chispita_crt_glow = 0.6
-  chispita_crt_vignette = 0.3
-      How strong each part of the CRT effect is, from 0 to 1.
   chispita_debug_mode = 0
       1 = debug mode on (section 9).
 
@@ -864,7 +857,7 @@ level.map.update()) works straight away.
 
 
 --------------------------------------------------------------------------------
-7. CAMERA, DRAWING LAYERS AND THE CRT EFFECT
+7. CAMERA AND DRAWING LAYERS
 --------------------------------------------------------------------------------
 
 THE CAMERA OBJECT
@@ -932,55 +925,6 @@ Two more drawing variables on sprites, text and maps:
   parallax   how much it moves with the camera: 1 = normal, 0.5 = half
              (looks far away), 0 = never moves
   ui         1 = ignores the camera completely (scores, menus)
-
-THE CRT EFFECT
-Pixel art drawn big on a modern screen has hard, perfectly square edges.
-An old CRT TV softened them. Turn this on to get that softer look, without
-scanlines:
-
-    Chispita_init()
-    chispita_crt = 1
-
-It does three things, each with its own setting from 0 (off) to 1:
-
-  chispita_crt_soften = 0.5     Blurs the hard edges of pixels a little,
-                                more sideways than up and down, like the
-                                beam of a CRT. Details stay readable.
-  chispita_crt_glow = 0.6       Bright colors glow onto what's around
-                                them. Dark colors don't glow.
-  chispita_crt_vignette = 0.3   Darkens the corners and edges.
-
-Change them any time, even every frame. For a flash when something
-explodes, raise chispita_crt_glow for a moment and let it fall back:
-
-    chispita_crt_glow = 1
-    Chispita_after(0.15, function() chispita_crt_glow = 0.6 end)
-
-With chispita_crt = 1 the effect is added at the end of Chispita_draw, so
-anything your draw function puts on the screen AFTER Chispita_draw (a score
-drawn with screen.drawText, a menu) stays sharp. Chispita text sprites,
-including ui ones, get the effect. The debug overlays are always drawn
-after it, so they stay sharp.
-
-Chispita_applyCrt()
-    Adds the effect to everything on the screen right now. Use it instead
-    of chispita_crt = 1 when you want your own drawing to get the effect
-    too: leave chispita_crt at 0 and call this at the end of draw.
-
-      draw = function()
-        Chispita_draw()
-        screen.drawText("LIVES 3", 0, 90, 10, "rgb(255,255,255)")
-        Chispita_applyCrt()
-      end
-
-How it works: microScript can't read the screen's pixels, so the effect
-runs in JavaScript (with system.javascript) on microStudio's screen. It
-needs the default microStudio graphics, not Pixi, M2D, M3D or Babylon. If
-it can't run, it prints one warning and does nothing.
-
-It costs a few full-screen copies per frame. That's quick on most
-computers, but on a slow phone, check the FPS (debug mode's Info shows it)
-and lower or switch off chispita_crt_glow first; it's the most work.
 
 
 --------------------------------------------------------------------------------
