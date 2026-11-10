@@ -36,6 +36,13 @@ chispita_config = function()
   chispita_crt_saturation = 1        // 1 = unchanged, 0 = black and white
   chispita_crt_warmth = 0            // -1 cooler to 1 warmer
   chispita_crt_grain = 0             // film grain, 0 to 1
+  chispita_crt_scanlines = 0         // old-TV extras, all 0 to 1, 0 = off:
+  chispita_crt_mask = 0              //   scanlines, RGB stripes, screen bulge,
+  chispita_crt_curve = 0             //   dark corners, color fringes,
+  chispita_crt_vignette = 0          //   flicker, rolling bar
+  chispita_crt_aberration = 0
+  chispita_crt_flicker = 0
+  chispita_crt_roll = 0
 
   // Debug
   chispita_debug_mode = 0
