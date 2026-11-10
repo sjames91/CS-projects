@@ -1,0 +1,17 @@
+level_init = function(level_number)
+  if level_number == 1 then
+    level = Chispita_addMap("overworld/overworld")
+    sky = Chispita_addMap("overworld/overworld_background", 0, 0, physics_off)
+    sky.tile = true
+    sky.parallax = 0.5
+    chispita_mode = "platformer"
+    level.bounciness = 1
+    Camera.zoom = .7
+  end
+end
+
+level_update = function()
+end
+
+level_draw = function()
+end

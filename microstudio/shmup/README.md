@@ -6,6 +6,23 @@ A side-scrolling ship game built on the [Chispita](../chispita) engine in microS
 
 The files are plain-text copies of the microStudio source files. The sprites and maps they refer to (`ship_1`, `overworld/overworld`, and so on) are in the microStudio project and aren't included here.
 
+## Other languages
+
+The game is also ported to microStudio's other languages, each on the matching copy of the engine:
+
+| Language | Game | Engine |
+| --- | --- | --- |
+| JavaScript | [`javascript/`](javascript) | [`chispita/javascript`](../chispita/javascript) |
+| Lua | [`lua/`](lua) | [`chispita/lua`](../chispita/lua) |
+| Python | [`python/`](python) | [`chispita/python`](../chispita/python) |
+
+To try one, make a microStudio project in that language, add the engine files and the game files, and copy over the sprites and maps from the microScript project. The ports are tests of the engine copies: fed the same keys, all three put the ship and the pilot in exactly the same place, frame for frame.
+
+What changed in each port:
+- **JavaScript:** nothing besides the syntax.
+- **Lua:** on/off settings are `true`/`false` (`player_ship.fall = false`), keys are checked with `== 1`, and powers are written `a ^ b`, because microStudio runs Lua 5.3, which has no `math.pow`.
+- **Python:** functions that change `ship`, `player_ship` and the like say `global` first, and keys are read through two small helpers, `key("LEFT")` and `key_press("Q")`. microStudio only adds a key to `keyboard` once it has been pressed, and Python can't read a field that isn't there.
+
 ## Controls
 
 | Key | In the ship | On foot |
