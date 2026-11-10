@@ -44,6 +44,16 @@ draw = function()
 end
 ```
 
+## Other languages
+
+microStudio projects can also be written in JavaScript, Lua or Python. Each has its own copy of the engine, with the same functions, settings and behavior:
+
+- [`javascript/`](javascript)
+- [`lua/`](lua)
+- [`python/`](python)
+
+There's also a [LÖVE version](../../love2d/chispita) for making games outside microStudio.
+
 ## Files
 
 | File | Contents |
