@@ -1,6 +1,6 @@
 import math
 
-chispita_version = "0.21"
+chispita_version = "0.1"
 
 # microStudio may run the engine files in any order, so each file that
 # needs chispita_obj when it loads makes sure it exists.

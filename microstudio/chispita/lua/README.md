@@ -1,6 +1,6 @@
 # Chispita for microStudio, in Lua
 
-The Lua version of [Chispita](..), version **0.21**, for microStudio projects set to Lua. Same functions, settings and behavior as the microScript engine, file for file. It's the [LÖVE port](../../../love2d/chispita) with its drawing swapped for microStudio's.
+The Lua version of [Chispita](..), version **0.1**, for microStudio projects set to Lua. Same functions, settings and behavior as the microScript engine, file for file. It's the [LÖVE port](../../../love2d/chispita) with its drawing swapped for microStudio's.
 
 ## Adding it to a project
 

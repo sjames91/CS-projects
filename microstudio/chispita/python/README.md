@@ -1,6 +1,6 @@
 # Chispita for microStudio, in Python
 
-The Python version of [Chispita](..), version **0.21**, for microStudio projects set to Python. Same functions, settings and behavior as the microScript engine, file for file.
+The Python version of [Chispita](..), version **0.1**, for microStudio projects set to Python. Same functions, settings and behavior as the microScript engine, file for file.
 
 ## Adding it to a project
 

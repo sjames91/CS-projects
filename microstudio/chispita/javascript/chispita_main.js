@@ -1,4 +1,4 @@
-var chispita_version = "0.21"
+var chispita_version = "0.1"
 
 // Math helpers microScript has built in.
 function chispita_sind(a) { return Math.sin(a * Math.PI / 180) }

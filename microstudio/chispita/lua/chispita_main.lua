@@ -1,4 +1,4 @@
-chispita_version = "0.21"
+chispita_version = "0.1"
 
 -- microStudio's own things (screen, mouse, sprites, maps, random, system)
 -- are JavaScript objects. Their functions are called with ":", like

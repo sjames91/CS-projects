@@ -1,6 +1,6 @@
 # Chispita for microStudio, in JavaScript
 
-The JavaScript version of [Chispita](..), version **0.21**, for microStudio projects set to JavaScript. Same functions, settings and behavior as the microScript engine, file for file.
+The JavaScript version of [Chispita](..), version **0.1**, for microStudio projects set to JavaScript. Same functions, settings and behavior as the microScript engine, file for file.
 
 ## Adding it to a project
 
