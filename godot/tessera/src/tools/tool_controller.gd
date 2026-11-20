@@ -17,8 +17,14 @@ const TOOLS := {
 	"lasso": {"name": "Lasso select", "key": KEY_Q},
 	"wand": {"name": "Magic wand", "key": KEY_W},
 	"move": {"name": "Move", "key": KEY_V},
+	"arrow": {"name": "Arrow (direction)", "key": KEY_A},
+	"curve": {"name": "Curve (direction)", "key": KEY_C},
+	"bezier": {"name": "Bezier (direction)", "key": KEY_K},
+	"dir_edit": {"name": "Edit strokes", "key": KEY_N},
 }
-const ORDER := ["pencil", "eraser", "eyedropper", "line", "rect", "ellipse", "fill", "select_rect", "lasso", "wand", "move"]
+const ORDER := ["pencil", "eraser", "eyedropper", "line", "rect", "ellipse", "fill", "select_rect", "lasso", "wand", "move",
+	"arrow", "curve", "bezier", "dir_edit"]
+const DIR_TOOLS := ["arrow", "curve", "bezier", "dir_edit"]
 
 var active := false
 var erase := false
@@ -164,7 +170,7 @@ func press(p: Vector2, right_button: bool, mods: Dictionary) -> void:
 	_mods = mods
 	erase = right_button
 	_tool = App.tool
-	if right_button and _tool in ["eyedropper", "fill", "line", "rect", "ellipse", "move", "select_rect", "lasso", "wand"]:
+	if right_button and _tool in ["eyedropper", "fill", "line", "rect", "ellipse", "move", "select_rect", "lasso", "wand", "arrow", "curve", "bezier", "dir_edit"]:
 		_tool = "eraser"  # right button always erases
 	if _tool == "pencil" and mods.get("alt", false):
 		_tool = "eyedropper"
@@ -173,7 +179,11 @@ func press(p: Vector2, right_button: bool, mods: Dictionary) -> void:
 	last = p
 	current = p
 	if _layer.is_direction():
-		_direction_press(p)
+		_direction_press(p, mods)
+		return
+	if _tool in DIR_TOOLS:
+		active = false
+		App.status.emit("Direction tools draw on direction layers (+ Dir in Layers)")
 		return
 	_t()  # normalises the layer's cell arrays to its tiling before snapshotting
 	_before = _layer.cells(_frame).duplicate()
@@ -500,47 +510,170 @@ func _finish_move() -> void:
 
 # ---- direction layer ---------------------------------------------------------
 
-func _direction_press(p: Vector2) -> void:
+var _bez_a := PackedVector2Array()  # pending Bezier anchors
+var _bez_o := PackedVector2Array()  # their out-handles (in-handles mirror them)
+var _edit_idx := -1                # point index being dragged (-1 = whole stroke)
+var _edit_from: Dictionary = {}
+
+
+func _dir_settings() -> Dictionary:
+	var d := DirStroke.DEFAULT_SETTINGS.duplicate()
+	d.merge(_layer.settings.get("dir", {}), true)
+	return d
+
+
+func _strokes() -> Array:
+	return _layer.strokes_at(App.frame)
+
+
+func _new_stroke(kind: String, pts: PackedVector2Array) -> Dictionary:
+	var ds := _dir_settings()
+	var type: String = DirStroke.TYPES[int(ds.new_type)]
+	var radius := float(ds.new_radius) * App.project.cell_size
+	if kind != "arrow":
+		type = "path"
+	if type != "path" and radius <= 0.0 and pts.size() > 1:
+		radius = pts[0].distance_to(pts[1]) * 2.0
+	return DirStroke.make(kind, type, pts, radius, float(ds.new_strength))
+
+
+func _add_stroke(st: Dictionary, label: String) -> void:
+	var lid := _layer.id
+	var f := App.frame
+	App.perform(label, func():
+		var l := App.project.layer_by_id(lid)
+		l.strokes_at(f).append(st)
+		App.dir_selected = l.strokes_at(f).size() - 1)
+
+
+func _stroke_at(p: Vector2) -> int:
+	var best := -1
+	var bd := App.project.cell_size * 1.5
+	var arr := _strokes()
+	for i in arr.size():
+		var d := DirStroke.distance_to(arr[i], p)
+		if d < bd:
+			bd = d
+			best = i
+	return best
+
+
+func _direction_press(p: Vector2, mods: Dictionary) -> void:
 	if _layer.locked:
 		active = false
 		return
 	if erase or _tool == "eraser":
-		_erase_strokes_near(p)
+		var i := _stroke_at(p)
+		active = false
+		if i >= 0:
+			var lid := _layer.id
+			var f := App.frame
+			App.perform("Delete stroke", func():
+				App.project.layer_by_id(lid).strokes_at(f).remove_at(i)
+				App.dir_selected = -1)
 		return
-	_stroke = PackedVector2Array([p])
+	match _tool:
+		"arrow":
+			_stroke = PackedVector2Array([p, p])
+		"pencil", "curve":
+			_stroke = PackedVector2Array([p])
+		"bezier":
+			_bez_a.append(p)
+			_bez_o.append(p)
+			if mods.get("double", false):
+				finish_bezier()
+				active = false
+		"dir_edit":
+			var i := _stroke_at(p)
+			App.dir_selected = i
+			App.selection_changed.emit()
+			if i < 0:
+				active = false
+				return
+			var st: Dictionary = _strokes()[i]
+			_edit_idx = -1
+			var bd := App.project.cell_size * 0.9
+			var pts: PackedVector2Array = st.points
+			for k in pts.size():
+				if pts[k].distance_to(p) < bd:
+					bd = pts[k].distance_to(p)
+					_edit_idx = k
+			_edit_from = st.duplicate()
+			_edit_from.points = pts.duplicate()
+			App.begin_change()
+		_:
+			active = false
 
 
 func _direction_drag(p: Vector2) -> void:
-	if erase or _tool == "eraser":
-		_erase_strokes_near(p)
-		return
-	if _stroke.size() > 0 and _stroke[_stroke.size() - 1].distance_to(p) >= App.project.cell_size * 0.5:
-		_stroke.append(p)
+	match _tool:
+		"arrow":
+			if _stroke.size() == 2:
+				_stroke[1] = p
+		"pencil", "curve":
+			if _stroke.size() > 0 and _stroke[_stroke.size() - 1].distance_to(p) >= App.project.cell_size * 0.5:
+				_stroke.append(p)
+		"bezier":
+			if not _bez_o.is_empty():
+				_bez_o[_bez_o.size() - 1] = p
+		"dir_edit":
+			var i: int = App.dir_selected
+			if i < 0 or i >= _strokes().size():
+				return
+			var st: Dictionary = _strokes()[i]
+			var src: PackedVector2Array = _edit_from.points
+			var pts := src.duplicate()
+			var dlt := p - start
+			if _edit_idx < 0:
+				for k in pts.size():
+					pts[k] = src[k] + dlt
+			else:
+				pts[_edit_idx] = src[_edit_idx] + dlt
+				# Moving a Bezier anchor carries its handles along.
+				if st.kind == "bezier" and _edit_idx % 3 == 0:
+					for h in [_edit_idx - 1, _edit_idx + 1]:
+						if h >= 0 and h < pts.size():
+							pts[h] = src[h] + dlt
+			st.points = pts
 
 
 func _direction_release() -> void:
-	if erase or _tool == "eraser" or _stroke.size() < 2:
-		_stroke = PackedVector2Array()
-		return
-	var s := _stroke
+	match _tool:
+		"arrow":
+			if _stroke.size() == 2 and _stroke[0].distance_to(_stroke[1]) > 2.0:
+				_add_stroke(_new_stroke("arrow", _stroke), "Draw arrow")
+		"pencil", "curve":
+			if _stroke.size() >= 2:
+				_add_stroke(_new_stroke("curve", _stroke), "Draw curve")
+		"dir_edit":
+			App.end_change("Edit stroke")
 	_stroke = PackedVector2Array()
-	var lid := _layer.id
-	App.perform("Draw direction", func():
-		App.project.layer_by_id(lid).strokes.append(s))
 
 
-func _erase_strokes_near(p: Vector2) -> void:
-	var radius := App.project.cell_size * 1.5
-	for i in range(_layer.strokes.size() - 1, -1, -1):
-		var s: PackedVector2Array = _layer.strokes[i]
-		for j in range(s.size() - 1):
-			if Geometry2D.get_closest_point_to_segment(p, s[j], s[j + 1]).distance_to(p) < radius:
-				var lid := _layer.id
-				var idx := i
-				App.perform("Erase direction", func():
-					App.project.layer_by_id(lid).strokes.remove_at(idx))
-				return
+func _bez_points() -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in _bez_a.size():
+		if i > 0:
+			pts.append(_bez_o[i - 1])
+			pts.append(_bez_a[i] * 2.0 - _bez_o[i])
+		pts.append(_bez_a[i])
+	return pts
+
+
+## Completes the pending Bezier stroke (Enter, double-click or tool change).
+func finish_bezier() -> void:
+	if _bez_a.size() >= 2 and _layer and _layer.is_direction():
+		_add_stroke(_new_stroke("bezier", _bez_points()), "Draw Bezier")
+	_bez_a = PackedVector2Array()
+	_bez_o = PackedVector2Array()
 
 
 func pending_stroke() -> PackedVector2Array:
+	if _bez_a.size() >= 2:
+		return DirStroke.polyline({"kind": "bezier", "points": _bez_points()})
 	return _stroke
+
+
+## Anchors and handles of the Bezier being drawn (overlay).
+func pending_bezier() -> Array:
+	return [_bez_a, _bez_o]

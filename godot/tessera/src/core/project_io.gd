@@ -4,12 +4,13 @@ extends RefCounted
 ## one small migration function per version step; newer files load with a
 ## warning instead of crashing.
 
-const FORMAT_VERSION := 2
+const FORMAT_VERSION := 3
 const APP_ID := "tessera"
 
 ## Migration steps: MIGRATIONS[n] upgrades a version-n dict to n+1.
 const MIGRATIONS := {
 	1: "_migrate_1_to_2",
+	2: "_migrate_2_to_3",
 }
 
 
@@ -21,13 +22,10 @@ static func to_dict(p: ProjectData) -> Dictionary:
 		for f in l.frames:
 			fr.append({"size": f.size(), "zstd": Marshalls.raw_to_base64(f.compress(FileAccess.COMPRESSION_ZSTD))})
 		d["frames"] = fr
-		var st: Array = []
-		for s in l.strokes:
-			var flat: Array = []
-			for v in s:
-				flat.append_array([v.x, v.y])
-			st.append(flat)
-		d["strokes"] = st
+		var sf: Array = []
+		for sfr0 in l.stroke_frames:
+			sf.append(sfr0.map(func(st): return DirStroke.to_json(st)))
+		d["stroke_frames"] = sf
 		ls.append(d)
 	var pal: Array = []
 	for c in p.palette:
@@ -80,7 +78,7 @@ static func from_dict(src: Dictionary) -> Dictionary:
 		var l := LayerData.new()
 		var meta: Dictionary = ld.duplicate()
 		meta.erase("frames")
-		meta.erase("strokes")
+		meta.erase("stroke_frames")
 		# JSON turns ints into floats; normalise the ones that matter.
 		meta["id"] = int(meta.get("id", p.next_layer_id))
 		meta["blend_mode"] = int(meta.get("blend_mode", 0))
@@ -91,11 +89,10 @@ static func from_dict(src: Dictionary) -> Dictionary:
 		for f in ld.get("frames", []):
 			var raw := Marshalls.base64_to_raw(f.zstd)
 			l.frames.append(raw.decompress(int(f.size), FileAccess.COMPRESSION_ZSTD))
-		for s in ld.get("strokes", []):
-			var pts := PackedVector2Array()
-			for i in range(0, s.size() - 1, 2):
-				pts.append(Vector2(s[i], s[i + 1]))
-			l.strokes.append(pts)
+		var sfr: Array = []
+		for fr in ld.get("stroke_frames", [[]]):
+			sfr.append(fr.map(func(st): return DirStroke.from_json(st)))
+		l.stroke_frames = sfr if not sfr.is_empty() else [[]]
 		var n := p.tiling_for(l).cell_count()
 		l.ensure_frames(1 if l.is_static else p.frame_count, n)
 		p.layers.append(l)
@@ -135,4 +132,18 @@ static func _migrate_1_to_2(d: Dictionary) -> Dictionary:
 	for l in d.get("layers", []):
 		if typeof(l.get("blend_mode", 0)) == TYPE_STRING:
 			l["blend_mode"] = max(LayerData.BLEND_NAMES.find(String(l.blend_mode).capitalize()), 0)
+	return d
+
+
+
+## v2 stored direction strokes as bare point lists ("strokes"); v3 stores
+## typed strokes per frame ("stroke_frames").
+static func _migrate_2_to_3(d: Dictionary) -> Dictionary:
+	for l in d.get("layers", []):
+		if l.has("strokes"):
+			var fr: Array = []
+			for flat in l.strokes:
+				fr.append({"kind": "curve", "type": "path", "points": flat, "radius": 0.0, "strength": 1.0})
+			l["stroke_frames"] = [fr]
+			l.erase("strokes")
 	return d

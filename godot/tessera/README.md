@@ -106,7 +106,7 @@ preview · Enter play · , . step frames · F1 all shortcuts.
 Needs a Vulkan device (a software one such as lavapipe works):
 
 ```
-godot --path . -s tests/test_core.gd           # tilings, GPU kernels, IO
+godot --path . res://tests/test_core.tscn      # tilings × offsets, GPU kernels, IO, migrations
 godot --path . res://tests/interaction.tscn    # real mouse events on the canvas
 godot --path . res://tests/screenshot.tscn     # renders every tiling/style (SHOT_DIR=…)
 ```

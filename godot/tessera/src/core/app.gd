@@ -49,6 +49,10 @@ var max_cache_px := 2048
 var anim_tick := 0
 ## Pattern map view (editor only): layer id -> slot index shown as grayscale.
 var pattern_view := {}
+## Selected stroke (index in the active direction layer's current frame).
+var dir_selected := -1
+## Show the flow field overlay even when not editing a direction layer.
+var show_field := false
 
 
 func _ready() -> void:
@@ -320,13 +324,13 @@ func resize_canvas(new_cells: Vector2i, new_cell_size: int, anchor: Vector2) -> 
 				# coordinates, so map from a scaled copy of the old tiling.
 				var scaled_t := _layer_tiling_with(l, l.tiling_id, l.tiling_params, mode, new_cell_size, old_px * scale)
 				resample_layer(l, scaled_t, new_t, -delta)
-			var moved: Array = []
-			for s in l.strokes:
-				var pts := PackedVector2Array()
-				for v in s:
-					pts.append(v * scale + delta)
-				moved.append(pts)
-			l.strokes = moved
+			for fr in l.stroke_frames:
+				for st in fr:
+					var pts := PackedVector2Array()
+					for v in st.points:
+						pts.append(v * scale + delta)
+					st.points = pts
+					st.radius = float(st.radius) * scale
 		project.canvas_cells = new_cells
 		project.cell_size = new_cell_size
 		clear_selection(false)

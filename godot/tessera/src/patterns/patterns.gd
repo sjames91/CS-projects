@@ -117,10 +117,22 @@ float ph_bayer(ivec2 p, int bits) {
 }
 // src: pattern source; p: canvas px; a = (scale cells, contrast, angle deg, seed);
 // b = (octaves, mode, turbulence, -); L = OKLab lightness of the cell colour.
-float pattern_eval(int src, vec2 p, float cs, vec4 a, vec4 b, float L) {
+// fl = (flow.xy, follow strength, drift): patterns bend, stretch and drift
+// along a Direction Layer's flow.
+float pattern_eval(int src, vec2 p, float cs, vec4 a, vec4 b, float L, vec4 fl) {
 	float s = a.w;
-	vec2 q = p / (cs * max(a.x, 0.01)) + vec2(fract(s * 0.618034) * 517.0, fract(s * 0.754878) * 311.0);
+	vec2 q = p / (cs * max(a.x, 0.01));
 	float ang = radians(a.z);
+	float fmag = length(fl.xy);
+	if (fmag > 0.001 && fl.z > 0.0) {
+		float fa = atan(fl.y, fl.x);
+		float fs = fl.z * clamp(fmag, 0.0, 1.0);
+		ang = mix(ang, -fa, fs);
+		vec2 qr = ph_rot(q, -fa);
+		qr.x = qr.x / (1.0 + 3.0 * fs) - fl.w;
+		q = ph_rot(qr, fa);
+	}
+	q += vec2(fract(s * 0.618034) * 517.0, fract(s * 0.754878) * 311.0);
 	int mode = int(b.y);
 	float v = 0.0;
 	if (src == 1) { v = ph_value(q, s); }
@@ -183,7 +195,7 @@ float pattern_eval(int src, vec2 p, float cs, vec4 a, vec4 b, float L) {
 
 ## Per-cell map for one slot: RF image (grid sized). `raster` is the
 ## reaction-diffusion field (or an empty image for other sources).
-static func cell_map(slot: Dictionary, t: Tiling, cells: PackedByteArray, palette: PackedColorArray, raster: Image) -> Image:
+static func cell_map(slot: Dictionary, t: Tiling, cells: PackedByteArray, palette: PackedColorArray, raster: Image, flow: Image = null, flow_strength := 0.0, drift := 0.0) -> Image:
 	var n := t.cell_count()
 	var lum := PackedFloat32Array()
 	lum.resize(256)
@@ -197,14 +209,23 @@ static func cell_map(slot: Dictionary, t: Tiling, cells: PackedByteArray, palett
 		rw = raster.get_width()
 		rh = raster.get_height()
 		rdata = raster.get_data()
+	var fw := 1
+	var fh := 1
+	var fdata := PackedByteArray()
+	fdata.resize(8)
+	if flow and not flow.is_empty() and flow_strength > 0.0:
+		fw = flow.get_width()
+		fh = flow.get_height()
+		fdata = flow.get_data()
 	var out := PackedByteArray()
 	out.resize(n * 4)
 	var code := "#version 450\nlayout(local_size_x = 64) in;\n" + \
+		"layout(set = 0, binding = 4, std430) restrict readonly buffer Flow { vec2 f[]; } flowb;\n" + \
 		"layout(set = 0, binding = 0, std430) restrict readonly buffer Cells { uint b[]; } cells;\n" + \
 		"layout(set = 0, binding = 1, std430) restrict readonly buffer Lum { float l[]; } lum;\n" + \
 		"layout(set = 0, binding = 2, std430) restrict readonly buffer Ras { float r[]; } ras;\n" + \
 		"layout(set = 0, binding = 3, std430) restrict writeonly buffer Out { float v[]; } outb;\n" + \
-		"layout(push_constant, std430) uniform P { vec4 a; vec4 b; vec4 tp; vec2 canvas; float cs; int src; int gw; int gh; int rw; int rh; } pc;\n" + \
+		"layout(push_constant, std430) uniform P { vec4 a; vec4 b; vec4 tp; vec2 canvas; float cs; int src; int gw; int gh; int rw; int rh; int fw; int fh; float fs; float drift; } pc;\n" + \
 		t.glsl_prefixed("tl_") + GLSL + """
 float ras_at(vec2 uv) {
 	vec2 x = uv * vec2(pc.rw, pc.rh) - 0.5;
@@ -223,14 +244,19 @@ void main() {
 	uint v8 = (cells.b[idx >> 2u] >> ((idx & 3u) * 8u)) & 255u;
 	float L = lum.l[v8];
 	float v;
+	vec4 fl = vec4(0.0);
+	if (pc.fw > 1) {
+		ivec2 fi = clamp(ivec2(p / pc.canvas * vec2(pc.fw, pc.fh)), ivec2(0), ivec2(pc.fw - 1, pc.fh - 1));
+		fl = vec4(flowb.f[fi.y * pc.fw + fi.x], pc.fs, pc.drift);
+	}
 	if (pc.src == 0) { v = clamp((ras_at(p / pc.canvas) - 0.5) * pc.a.y + 0.5, 0.0, 1.0); }
-	else { v = pattern_eval(pc.src, p, pc.cs, pc.a, pc.b, L); }
+	else { v = pattern_eval(pc.src, p, pc.cs, pc.a, pc.b, L, fl); }
 	outb.v[idx] = v;
 }
 """
 	var g := Gpu.push().v4(params_a(slot)).v4(params_b(slot)).v4(t.glsl_params()).v2(t.canvas_px).f(t.cs) \
-		.i(int(slot.source)).i(t.grid.x).i(t.grid.y).i(rw).i(rh)
-	var res := Gpu.run("pattern_cells_" + t.shader_key(), code, [cells, lum.to_byte_array(), rdata, out], g.bytes, Vector3i(ceili(n / 64.0), 1, 1), [3])
+		.i(int(slot.source)).i(t.grid.x).i(t.grid.y).i(rw).i(rh).i(fw).i(fh).f(flow_strength).f(drift)
+	var res := Gpu.run("pattern_cells_" + t.shader_key(), code, [cells, lum.to_byte_array(), rdata, out, fdata], g.bytes, Vector3i(ceili(n / 64.0), 1, 1), [3])
 	var data: PackedByteArray = res[0] if not res.is_empty() else out
 	data.resize(n * 4)
 	return Image.create_from_data(t.grid.x, t.grid.y, false, Image.FORMAT_RF, data)

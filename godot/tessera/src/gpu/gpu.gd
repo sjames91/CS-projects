@@ -389,45 +389,74 @@ void main() {
 	return out
 
 
-## Flow field from direction strokes: every texel gets the inverse-distance
-## weighted tangent of all stroke segments. Returns an RGF image (x, y).
-func flow_field(strokes: Array, size: Vector2i, canvas_px: Vector2) -> Image:
-	var segs := PackedFloat32Array()
-	for s in strokes:
-		for i in range(s.size() - 1):
-			segs.append_array([s[i].x, s[i].y, s[i + 1].x, s[i + 1].y])
-	var n := segs.size() / 4
+## Flow field from direction strokes. All strokes blend into one smooth
+## field: paths pull along their tangent, swirls around their center,
+## radial strokes out of / into it; each with its own radius and strength.
+## smoothing (px) controls how gently directions blend between strokes.
+## Returns an RGF image: direction * coverage (zero = no flow).
+func flow_field(strokes: Array, size: Vector2i, canvas_px: Vector2, smoothing: float, default_on: bool, default_angle: float) -> Image:
+	var segs := DirStroke.field_segments(strokes)
+	var n := segs.size() / 12
 	var out := PackedByteArray()
 	out.resize(size.x * size.y * 8)
-	if rd == null or n == 0:
+	if rd == null or (n == 0 and not default_on):
 		return Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGF, out)
+	if n == 0:
+		segs = PackedFloat32Array([0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0])
 	var code := """#version 450
 layout(local_size_x = 8, local_size_y = 8) in;
 layout(set = 0, binding = 0, std430) restrict readonly buffer Segs { vec4 s[]; } segs;
 layout(set = 0, binding = 1, std430) restrict writeonly buffer Out { vec2 v[]; } outb;
-layout(push_constant, std430) uniform P { int w; int h; int n; float falloff; vec2 canvas; } pc;
+layout(push_constant, std430) uniform P { int w; int h; int n; float smooth_px; vec2 canvas; vec2 def_dir; } pc;
 void main() {
 	ivec2 g = ivec2(gl_GlobalInvocationID.xy);
 	if (g.x >= pc.w || g.y >= pc.h) { return; }
 	vec2 p = (vec2(g) + 0.5) / vec2(pc.w, pc.h) * pc.canvas;
 	vec2 acc = vec2(0.0);
+	float wsum = 0.0;
+	float sm2 = max(pc.smooth_px * pc.smooth_px, 1.0);
 	for (int i = 0; i < pc.n; i++) {
-		vec2 a = segs.s[i].xy;
-		vec2 b = segs.s[i].zw;
-		vec2 ab = b - a;
-		float len2 = max(dot(ab, ab), 1e-6);
-		float t = clamp(dot(p - a, ab) / len2, 0.0, 1.0);
-		float d = length(p - (a + ab * t));
-		float wgt = sqrt(len2) / (d * d + pc.falloff * pc.falloff);
-		acc += normalize(ab) * wgt;
+		vec4 ab = segs.s[i * 3];
+		vec4 prm = segs.s[i * 3 + 1];
+		vec2 ctr = segs.s[i * 3 + 2].xy;
+		int t = int(prm.z);
+		if (t < 0) { continue; }
+		float radius = prm.x;
+		vec2 dir;
+		float d;
+		if (t == 0) {
+			vec2 a = ab.xy; vec2 b = ab.zw; vec2 e = b - a;
+			float len2 = max(dot(e, e), 1e-6);
+			float tt = clamp(dot(p - a, e) / len2, 0.0, 1.0);
+			d = length(p - (a + e * tt));
+			dir = normalize(e);
+		} else {
+			vec2 r = p - ctr;
+			d = length(r);
+			vec2 rn = d > 1e-4 ? r / d : vec2(1.0, 0.0);
+			if (t == 1) { dir = vec2(-rn.y, rn.x); }
+			else if (t == 2) { dir = vec2(rn.y, -rn.x); }
+			else if (t == 3) { dir = rn; }
+			else { dir = -rn; }
+			d = max(d - radius * 0.25, 0.0);
+		}
+		float fall = radius > 0.0 ? pow(clamp(1.0 - d / radius, 0.0, 1.0), 2.0) : 1.0;
+		float w = prm.y * fall * sm2 / (d * d + sm2);
+		if (t == 0) { w *= clamp(length(ab.zw - ab.xy) / max(pc.smooth_px, 1.0), 0.05, 1.0); }
+		acc += dir * w;
+		wsum += w;
 	}
+	float def_w = dot(pc.def_dir, pc.def_dir) > 0.0 ? 0.02 : 0.0;
+	acc += pc.def_dir * def_w;
+	wsum += def_w;
 	float l = length(acc);
-	outb.v[g.y * pc.w + g.x] = l > 1e-9 ? acc / l : vec2(0.0);
+	float coverage = clamp(wsum * 4.0, 0.0, 1.0);
+	outb.v[g.y * pc.w + g.x] = l > 1e-9 ? acc / l * coverage : vec2(0.0);
 }
 """
-	var falloff := maxf(canvas_px.x, canvas_px.y) / 64.0
-	var pc := push().i(size.x).i(size.y).i(n).f(falloff).v2(canvas_px)
-	var res := run("flow_field", code, [segs.to_byte_array(), out], pc.bytes, Vector3i(ceili(size.x / 8.0), ceili(size.y / 8.0), 1), [1])
+	var dd := Vector2.from_angle(deg_to_rad(default_angle)) if default_on else Vector2.ZERO
+	var pc := push().i(size.x).i(size.y).i(maxi(n, 1)).f(smoothing).v2(canvas_px).v2(dd)
+	var res := run("flow_field2", code, [segs.to_byte_array(), out], pc.bytes, Vector3i(ceili(size.x / 8.0), ceili(size.y / 8.0), 1), [1])
 	if res.is_empty():
 		return Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGF, out)
 	var data: PackedByteArray = res[0]

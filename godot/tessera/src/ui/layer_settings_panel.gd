@@ -22,6 +22,10 @@ func _ready() -> void:
 	add_child(_confirm)
 	App.document_changed.connect(_queue)
 	App.active_layer_changed.connect(_queue)
+	App.selection_changed.connect(func():
+		var l := _l()
+		if l and l.is_direction():
+			_queue())
 	_queue()
 
 
@@ -88,10 +92,7 @@ func _build() -> void:
 	if l == null:
 		return
 	if l.is_direction():
-		_box.add_child(UiKit.header("Direction layer"))
-		var info := UiKit.label("Draw arrows and curves with the left button; right button erases strokes. Other layers will be able to follow this flow.", true)
-		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_box.add_child(info)
+		_build_direction(l)
 		return
 	_box.add_child(UiKit.label("Layer: " + l.name, true))
 
@@ -154,25 +155,7 @@ func _build() -> void:
 	if l.setting("jitter_on"):
 		_box.add_child(_choice("Driven by", "jitter_source", ["Random", "Flow (Direction Layer)", "Pattern (slot 1 value)"]))
 		if int(l.setting("jitter_source")) == 1:
-			var dirs: Array = [["None", 0]]
-			for d in App.project.layers:
-				if d.is_direction():
-					dirs.append([d.name, d.id])
-			var dir_names: Array = dirs.map(func(e): return e[0])
-			var cur := 0
-			for i in dirs.size():
-				if dirs[i][1] == int(l.setting("flow_layer")):
-					cur = i
-			var o := UiKit.option(dir_names, cur, func(i):
-				App.begin_change()
-				_set_setting("flow_layer", dirs[i][1])
-				App.end_change("Link direction layer"))
-			o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			var lab := UiKit.label("Follow")
-			lab.custom_minimum_size.x = 96
-			_box.add_child(UiKit.hbox([lab, o]))
-			if dirs.size() == 1:
-				_box.add_child(UiKit.label("Add a direction layer (+ Dir) and draw arrows.", true))
+			_box.add_child(UiKit.label("Pushes cells along the layer chosen in 6 · Flow.", true))
 		_box.add_child(_slider("Position", "jitter_pos", 0.0, 1.0, 0.01))
 		_box.add_child(_slider("Size", "jitter_size", 0.0, 1.0, 0.01))
 		_box.add_child(_slider("Rotation", "jitter_rot", 0.0, 1.0, 0.01))
@@ -181,6 +164,7 @@ func _build() -> void:
 	_build_crt(l)
 	_build_patterns(l)
 	_build_offset(l)
+	_build_flow(l)
 
 
 func _build_offset(l: LayerData) -> void:
@@ -421,3 +405,133 @@ func _build_slot(l: LayerData, i: int) -> void:
 
 func _place(parent: Control, c: Control) -> void:
 	parent.add_child(c)
+
+
+# ---- 6 · Flow ------------------------------------------------------------------
+
+func _build_flow(l: LayerData) -> void:
+	_section("6 · Flow")
+	var dirs: Array = [["None", 0]]
+	for d in App.project.layers:
+		if d.is_direction():
+			dirs.append([d.name, d.id])
+	var dir_names: Array = dirs.map(func(e): return e[0])
+	var cur := 0
+	for i in dirs.size():
+		if dirs[i][1] == int(l.setting("flow_layer")):
+			cur = i
+	var o := UiKit.option(dir_names, cur, func(i):
+		App.begin_change()
+		_set_setting("flow_layer", dirs[i][1])
+		App.end_change("Follow direction layer")
+		_queue())
+	o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var lab := UiKit.label("Follow")
+	lab.custom_minimum_size.x = 96
+	_box.add_child(UiKit.hbox([lab, o]))
+	if dirs.size() == 1:
+		_box.add_child(UiKit.label("Add a direction layer (+ Dir in Layers) and draw arrows.", true))
+	if cur == 0:
+		return
+	_box.add_child(_slider("Flow strength", "flow_strength", 0.0, 1.0, 0.01))
+	_box.add_child(UiKit.label("What follows the flow:", true))
+	_box.add_child(_check("Stamp / brush dab rotation aligns", "flow_stamp_rot"))
+	_box.add_child(_check("Cell rotation aligns", "flow_cell_rot"))
+	_box.add_child(_check("Patterns bend and stretch along it", "flow_patterns"))
+	_box.add_child(_check("Reaction-diffusion becomes directional", "flow_rd"))
+	_box.add_child(UiKit.label("Jitter pushes along the flow when Jitter → Driven by is Flow.", true))
+	_box.add_child(_check("Animated flow (patterns drift; frames precomputed)", "flow_animate"))
+	if l.setting("flow_animate"):
+		_box.add_child(_slider("Drift speed", "flow_speed", 0.0, 8.0, 0.05))
+
+
+# ---- direction layer settings ---------------------------------------------------
+
+func _dset(key: String, v: Variant) -> void:
+	var l := _l()
+	var d: Dictionary = l.settings.get("dir", {}).duplicate()
+	d[key] = v
+	l.settings["dir"] = d
+	App.layer_settings_changed.emit(l.id)
+
+
+func _dval(key: String) -> Variant:
+	var d := DirStroke.DEFAULT_SETTINGS.duplicate()
+	d.merge(_l().settings.get("dir", {}), true)
+	return d[key]
+
+
+func _dslider(text: String, key: String, minv: float, maxv: float, step: float) -> Control:
+	return UiKit.slider_row(text, minv, maxv, step, float(_dval(key)), func(v): _dset(key, v),
+		func(): App.begin_change(), func(): App.end_change(text))
+
+
+func _build_direction(l: LayerData) -> void:
+	_box.add_child(UiKit.header("Direction layer · " + l.name))
+	var info := UiKit.label("Tools: Arrow (A), Curve (C), Bezier (K: click to add points, drag for handles, Enter or double-click to finish), Edit (N: drag points, handles or whole strokes). Right-click a stroke to delete it.", true)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_box.add_child(info)
+	_section("New strokes")
+	var to := UiKit.option(DirStroke.TYPE_NAMES, int(_dval("new_type")), func(i):
+		App.begin_change()
+		_dset("new_type", i)
+		App.end_change("Stroke type"))
+	to.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_box.add_child(UiKit.hbox([UiKit.label("Type (Arrow tool)"), to]))
+	_box.add_child(_dslider("Radius (cells)", "new_radius", 0.0, 128.0, 0.5))
+	_box.add_child(_dslider("Strength", "new_strength", 0.0, 4.0, 0.01))
+	var strokes := l.strokes_at(App.frame)
+	if App.dir_selected >= 0 and App.dir_selected < strokes.size():
+		var i: int = App.dir_selected
+		var st: Dictionary = strokes[i]
+		_section("Selected stroke")
+		var cs := float(App.project.cell_size)
+		var tsel := UiKit.option(DirStroke.TYPE_NAMES, DirStroke.TYPES.find(st.type), func(k):
+			App.perform("Stroke type", func(): l.strokes_at(App.frame)[i].type = DirStroke.TYPES[k])
+			_queue())
+		tsel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_box.add_child(UiKit.hbox([UiKit.label("Type"), tsel]))
+		_box.add_child(UiKit.slider_row("Radius (cells)", 0.0, 128.0, 0.5, float(st.radius) / cs,
+			func(v):
+				l.strokes_at(App.frame)[i].radius = v * cs
+				App.layer_settings_changed.emit(l.id),
+			func(): App.begin_change(), func(): App.end_change("Stroke radius")))
+		_box.add_child(UiKit.slider_row("Strength", 0.0, 4.0, 0.01, float(st.strength),
+			func(v):
+				l.strokes_at(App.frame)[i].strength = v
+				App.layer_settings_changed.emit(l.id),
+			func(): App.begin_change(), func(): App.end_change("Stroke strength")))
+		_box.add_child(UiKit.hbox([
+			UiKit.button("Reverse", func(): App.perform("Reverse stroke", func(): l.strokes_at(App.frame)[i] = DirStroke.reversed(l.strokes_at(App.frame)[i]))),
+			UiKit.button("Delete", func():
+				App.perform("Delete stroke", func():
+					l.strokes_at(App.frame).remove_at(i)
+					App.dir_selected = -1)
+				_queue()),
+		]))
+	_section("Field")
+	_box.add_child(_dslider("Smoothing (cells)", "smoothing", 0.25, 32.0, 0.25))
+	_box.add_child(UiKit.toggle("Default direction where no strokes reach", bool(_dval("default_on")), func(on):
+		App.begin_change()
+		_dset("default_on", on)
+		App.end_change("Default direction")
+		_queue()))
+	if _dval("default_on"):
+		_box.add_child(_dslider("Default angle°", "default_angle", -180.0, 180.0, 1.0))
+	var disp := UiKit.option(["Hidden", "Arrows", "Streamlines"], int(_dval("field_display")), func(k):
+		App.begin_change()
+		_dset("field_display", k)
+		App.end_change("Field display"))
+	disp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_box.add_child(UiKit.hbox([UiKit.label("Show field"), disp]))
+	_section("Direction presets")
+	var flow := HFlowContainer.new()
+	for pn in DirStroke.PRESETS:
+		var pname: String = pn
+		flow.add_child(UiKit.button(pname, func():
+			App.perform("Direction preset: " + pname, func():
+				var arr := l.strokes_at(App.frame)
+				arr.clear()
+				arr.append_array(DirStroke.preset(pname, App.project.canvas_px(), randi() % 1000)))
+			_queue(), "Replaces this frame's strokes"))
+	_box.add_child(flow)

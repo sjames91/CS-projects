@@ -135,24 +135,30 @@ func _build_props() -> void:
 	if not l.is_direction():
 		var blend := UiKit.option(LayerData.BLEND_NAMES, l.blend_mode, func(i): _set_meta(l, "blend_mode", i, "Blend mode"))
 		_props.add_child(UiKit.hbox([UiKit.label("Blend"), blend]))
-		_props.add_child(UiKit.toggle("Static (same content on every frame)", l.is_static, func(on): _set_static(l, on)))
+	_props.add_child(UiKit.toggle("Static (same content on every frame)", l.is_static, func(on): _set_static(l, on)))
 
 
 func _set_static(l: LayerData, on: bool) -> void:
 	var lid := l.id
 	App.perform("Static layer", func():
 		var layer := App.project.layer_by_id(lid)
-		layer.is_static = on
 		if on:
 			var keep: PackedByteArray = layer.frames[layer.frame_index(App.frame)] if not layer.frames.is_empty() else PackedByteArray()
 			var only: Array[PackedByteArray] = [keep]
+			var keep_strokes: Array = layer.strokes_at(App.frame)
 			layer.frames = only
+			layer.stroke_frames = [keep_strokes]
+			layer.is_static = true
 		else:
 			var base := layer.frames[0]
 			var fr: Array[PackedByteArray] = []
+			var sf: Array = []
 			for i in App.project.frame_count:
 				fr.append(base.duplicate())
+				sf.append(LayerData.copy_strokes([layer.stroke_frames[0]])[0])
 			layer.frames = fr
+			layer.stroke_frames = sf
+			layer.is_static = false
 	, [lid])
 
 

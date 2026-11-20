@@ -117,6 +117,11 @@ uniform float jitter_seed = 1.0;
 uniform int jitter_source = 0;   // 0 random, 1 flow, 2 pattern
 uniform bool flow_on = false;
 uniform sampler2D flow_tex : filter_linear, repeat_disable;
+uniform float flow_strength = 1.0;
+uniform bool flow_stamp_rot = false;
+uniform bool flow_cell_rot = false;
+uniform bool flow_patterns = false;
+uniform float flow_drift = 0.0;
 uniform bool scan_on = false;
 uniform float scan_thickness = 0.4;
 uniform float scan_dark = 0.5;
@@ -409,6 +414,14 @@ vec4 layer_color(vec2 p, float aa) {
 
 	vec2 q = p;
 	float scl = 1.0;
+	float stamp_rot = 0.0;
+	if (flow_on && (flow_cell_rot || flow_stamp_rot)) {
+		vec2 fc = texture(flow_tex, ctr / canvas_px).rg;
+		if (dot(fc, fc) > 1e-6) {
+			float fa = atan(fc.y, fc.x) * flow_strength * clamp(length(fc), 0.0, 1.0);
+			if (flow_cell_rot) { rot_add += fa; } else { stamp_rot = fa; }
+		}
+	}
 	scl *= max(size_mul, 0.001);
 	if (beam_on && style != 7) {
 		scl *= mix(1.0, 0.45 + 0.75 * luma(col.rgb), beam_amount);
@@ -424,8 +437,8 @@ vec4 layer_color(vec2 p, float aa) {
 			// turn toward it (rotation amount 1 = fully aligned).
 			vec2 f = texture(flow_tex, ctr / canvas_px).rg;
 			if (dot(f, f) > 1e-6) {
-				off = f * jitter_pos * jit_mul * inr * (0.5 + h.x);
-				ang = atan(f.y, f.x) * jitter_rot;
+				off = f * jitter_pos * jit_mul * inr * (0.5 + h.x) * flow_strength;
+				ang = atan(f.y, f.x) * jitter_rot * flow_strength;
 			}
 		}
 		q = ctr + rot2(p - ctr - off, -ang);
@@ -433,6 +446,7 @@ vec4 layer_color(vec2 p, float aa) {
 	if (rot_add != 0.0) { q = ctr + rot2(q - ctr, -rot_add); }
 	q = ctr + (q - ctr) / scl;
 	vec2 l = q - ctr;
+	if (stamp_rot != 0.0 && style >= 1 && style <= 5) { l = rot2(l, -stamp_rot); }
 	float tile_d = TL_sdf(q, c, ucs, utp, gap_px, rnd_px) * scl;
 	float shape_d = tile_d;
 	vec3 rgb = col.rgb;
@@ -510,7 +524,9 @@ vec4 layer_color(vec2 p, float aa) {
 	float Lc = rgb_to_oklab(col.rgb).x;
 	for (int i = 0; i < 4; i++) {
 		if (!pin[i] || pat_fine[i] <= 0.0) { continue; }
-		float tv = pat_src[i] == 0 ? pat_raster(i, p / canvas_px) : pattern_eval(pat_src[i], p, ucs, pat_a[i], pat_b[i], Lc);
+		vec4 fl = vec4(0.0);
+		if (flow_on && flow_patterns) { fl = vec4(texture(flow_tex, p / canvas_px).rg, flow_strength, flow_drift); }
+		float tv = pat_src[i] == 0 ? pat_raster(i, p / canvas_px) : pattern_eval(pat_src[i], p, ucs, pat_a[i], pat_b[i], Lc, fl);
 		outc.rgb *= mix(1.0, 0.45 + 1.1 * tv, pat_fine[i]);
 	}
 	if ((gap_on || gap_over) && grout_on) {

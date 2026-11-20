@@ -119,3 +119,29 @@ func turing() -> void:
 	rd.styles = [1, 0, 0]
 	rd.shift = [-3.0, 0.0]
 	app.perform("pat", func(): bg.settings.patterns = [rd])
+
+
+func direction() -> void:
+	var bg: LayerData = app.active_layer()
+	fill_layer(bg, func(c, p): return 5)
+	bg.settings.style = LayerData.Style.CROSS_STITCH
+	var sl := Patterns.default_slot()
+	sl.source = Patterns.Src.HATCHING
+	sl.mode = 1
+	sl.scale = 1.5
+	sl.drives = 0
+	sl.fine = true
+	sl.fine_amount = 0.8
+	var d := new_layer("Flow", func(l): l.kind = "direction")
+	d.is_static = true
+	app.perform("strokes", func():
+		var arr := d.strokes_at(0)
+		arr.append(DirStroke.make("field", "swirl_cw", PackedVector2Array([Vector2(170, 330), Vector2(230, 330)]), 220.0, 1.0))
+		arr.append(DirStroke.make("arrow", "path", PackedVector2Array([Vector2(20, 60), Vector2(500, 120)]), 160.0, 1.0))
+		arr.append(DirStroke.make("bezier", "path", PackedVector2Array([Vector2(300, 480), Vector2(360, 300), Vector2(440, 520), Vector2(500, 330)]), 140.0, 1.0))
+		bg.settings.patterns = [sl]
+		bg.settings.flow_layer = d.id
+		bg.settings.flow_stamp_rot = true
+		bg.settings.flow_patterns = true
+		d.settings["dir"] = {"field_display": 1})
+	app.dir_selected = 2

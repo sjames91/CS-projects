@@ -175,6 +175,7 @@ func _build_menu() -> MenuBar:
 		["Render: full result / raw cells   (Tab)", 0, func(): App.set_view("render_on", not App.render_on), "check"],
 		["Preview panel", KEY_P, _toggle_preview, "check"],
 		["Preview with Palette Lock", KEY_MASK_SHIFT | KEY_P, func(): App.set_view("preview_lock", not App.preview_lock), "check"],
+		["Show flow field on pixel layers", KEY_MASK_SHIFT | KEY_F, func(): App.set_view("show_field", not App.show_field), "check"],
 		[],
 		["Fit canvas", C | KEY_0, func(): canvas.fit_view()],
 		["Zoom in", KEY_EQUAL, func(): canvas.zoom_at(canvas.size * 0.5, 1.25)],
@@ -202,6 +203,7 @@ func _sync_checks() -> void:
 	v.set_item_checked(0, App.render_on)
 	v.set_item_checked(1, preview == null or preview.visible)
 	v.set_item_checked(2, App.preview_lock)
+	v.set_item_checked(3, App.show_field)
 
 
 func _toggle_tile() -> void:

@@ -35,6 +35,12 @@ const DEFAULT_SETTINGS := {
 	"patterns": [],
 	"flow_strength": 1.0,
 	"flow_rd": false,
+	"flow_stamp_rot": false,
+	"flow_cell_rot": false,
+	"flow_patterns": false,
+	"flow_animate": false,
+	"flow_speed": 1.0,
+	"dir": {},
 	"offset_amount": 0.5,
 	"scan_on": false,
 	"scan_thickness": 0.4,
@@ -63,8 +69,9 @@ var tiling_id: String = "square"
 var tiling_params: Dictionary = {}
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate(true)
 var frames: Array[PackedByteArray] = []
-## Direction layer data: Array of PackedVector2Array strokes in canvas px.
-var strokes: Array = []
+## Direction layer data: one Array of DirStroke dictionaries per frame
+## (a single entry when the layer is static).
+var stroke_frames: Array = [[]]
 
 var _tiling: Tiling = null
 var _tiling_key: String = ""
@@ -128,7 +135,7 @@ func meta_dict() -> Dictionary:
 		"id": id, "name": name, "kind": kind, "visible": visible, "locked": locked,
 		"solo": solo, "opacity": opacity, "blend_mode": blend_mode, "is_static": is_static,
 		"tiling_id": tiling_id, "tiling_params": tiling_params.duplicate(true),
-		"settings": settings.duplicate(true), "strokes": strokes.duplicate(true),
+		"settings": settings.duplicate(true), "stroke_frames": LayerData.copy_strokes(stroke_frames),
 	}
 
 
@@ -147,7 +154,7 @@ func apply_meta(d: Dictionary) -> void:
 	var s: Dictionary = DEFAULT_SETTINGS.duplicate(true)
 	s.merge(d.get("settings", {}), true)
 	settings = s
-	strokes = d.get("strokes", strokes).duplicate(true)
+	stroke_frames = LayerData.copy_strokes(d.get("stroke_frames", stroke_frames))
 
 
 func duplicate_layer(new_id: int) -> LayerData:
@@ -158,3 +165,68 @@ func duplicate_layer(new_id: int) -> LayerData:
 	for f in frames:
 		l.frames.append(f.duplicate())
 	return l
+
+
+
+static func copy_strokes(sf: Array) -> Array:
+	var out: Array = []
+	for fr in sf:
+		var f2: Array = []
+		for st in fr:
+			var c: Dictionary = st.duplicate()
+			c.points = (st.points as PackedVector2Array).duplicate()
+			f2.append(c)
+		out.append(f2)
+	return out
+
+
+## Strokes of a direction layer at a frame (static layers share one list).
+func strokes_at(frame: int) -> Array:
+	if stroke_frames.is_empty():
+		stroke_frames.append([])
+	var i := 0 if is_static else clampi(frame, 0, stroke_frames.size() - 1)
+	return stroke_frames[i]
+
+
+func all_strokes() -> Array:
+	var out: Array = []
+	for fr in stroke_frames:
+		out.append_array(fr)
+	return out
+
+
+# ---- frame operations (cells and direction strokes together) ---------------------
+
+func insert_frame(at: int, copy_from: int, cell_count: int) -> void:
+	if is_static:
+		return
+	if copy_from >= 0:
+		frames.insert(at, frames[clampi(copy_from, 0, frames.size() - 1)].duplicate())
+		stroke_frames.insert(at, LayerData.copy_strokes([stroke_frames[clampi(copy_from, 0, stroke_frames.size() - 1)]])[0])
+	else:
+		var blank := PackedByteArray()
+		blank.resize(cell_count)
+		frames.insert(at, blank)
+		stroke_frames.insert(at, [])
+
+
+func remove_frame(i: int) -> void:
+	if is_static:
+		return
+	if i < frames.size():
+		frames.remove_at(i)
+	if i < stroke_frames.size():
+		stroke_frames.remove_at(i)
+
+
+func swap_frames(a: int, b: int) -> void:
+	if is_static:
+		return
+	var t := frames[a]
+	frames[a] = frames[b]
+	frames[b] = t
+	while stroke_frames.size() < frames.size():
+		stroke_frames.append([])
+	var u = stroke_frames[a]
+	stroke_frames[a] = stroke_frames[b]
+	stroke_frames[b] = u

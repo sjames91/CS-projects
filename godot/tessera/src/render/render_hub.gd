@@ -107,15 +107,16 @@ func configure_material(mat: ShaderMaterial, layer: LayerData, frame: int) -> vo
 	mat.set_shader_parameter("opacity", layer.opacity)
 	mat.set_shader_parameter("blend_mode", layer.blend_mode)
 	var s := layer.settings
-	var flow_tex := _flow_texture(int(s.get("flow_layer", 0)))
+	var flow_tex := _flow_texture(int(s.get("flow_layer", 0)), frame)
 	mat.set_shader_parameter("flow_on", flow_tex != null)
 	if flow_tex:
 		mat.set_shader_parameter("flow_tex", flow_tex)
 	mat.set_shader_parameter("cell_style", int(s.get("style", 0)))
 	mat.set_shader_parameter("pal_count", maxi(App.project.palette.size(), 1))
+	mat.set_shader_parameter("flow_drift", _drift(layer, frame))
 	_bind_patterns(mat, layer, frame, t)
 	for k in s:
-		if k == "style" or k == "flow_layer" or k == "patterns":
+		if k in ["style", "flow_layer", "patterns", "dir", "offset_mode", "offset_amount"]:
 			continue
 		var v = s[k]
 		if k == "grout_color":
@@ -130,8 +131,16 @@ func cache_scale() -> float:
 	return clampf(float(App.max_cache_px) / maxf(px.x, px.y), 0.25, 4.0)
 
 
+## Cache frame slot: static layers share one cache unless they have animated
+## features (drifting flow), which get one cache per frame.
+func _cfi(layer: LayerData, frame: int) -> int:
+	if layer.setting("flow_animate"):
+		return frame
+	return layer.frame_index(frame)
+
+
 func cache_texture(layer: LayerData, frame: int) -> ImageTexture:
-	var k := _key(layer.id, layer.frame_index(frame))
+	var k := _key(layer.id, _cfi(layer, frame))
 	if _cache_valid.has(k):
 		return _cache.get(k)
 	return null
@@ -171,9 +180,17 @@ func _on_cells_changed(lid: int) -> void:
 
 
 func _on_settings_changed(lid: int) -> void:
+	var ids := [lid]
+	var changed := App.project.layer_by_id(lid)
+	if changed and changed.is_direction():
+		# Layers that follow this direction layer re-render too.
+		for l in App.project.layers:
+			if int(l.setting("flow_layer")) == lid:
+				ids.append(l.id)
 	for k in _cache_valid.keys():
-		if k.begins_with("%d:" % lid):
-			_cache_valid.erase(k)
+		for id in ids:
+			if k.begins_with("%d:" % id):
+				_cache_valid.erase(k)
 	if lid != App.active_layer_id:
 		_schedule_needed()
 
@@ -199,7 +216,7 @@ func _rebuild_queue() -> void:
 	for l in App.project.layers:
 		if l.is_direction() or l.id == App.active_layer_id or not App.layer_shown(l):
 			continue
-		var fi := l.frame_index(App.frame)
+		var fi := _cfi(l, App.frame)
 		if not _cache_valid.has(_key(l.id, fi)):
 			_queue.append([l.id, App.frame])
 	if not _queue.is_empty() and not _rendering:
@@ -234,7 +251,7 @@ func _render_cache(layer: LayerData, frame: int) -> void:
 	mat.set_shader_parameter("node_origin", Vector2.ZERO)
 	mat.set_shader_parameter("node_size", px)
 	mat.set_shader_parameter("tile_mode", false)
-	var k := _key(layer.id, layer.frame_index(frame))
+	var k := _key(layer.id, _cfi(layer, frame))
 	var cells_snapshot := layer.cells(frame).duplicate()
 	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	await RenderingServer.frame_post_draw
@@ -275,24 +292,41 @@ func render_layer_image(layer: LayerData, frame: int, size: Vector2i) -> Image:
 	return img
 
 
-## Flow field of a direction layer, recomputed (GPU) only when its strokes
-## or the canvas change.
-func _flow_texture(dir_id: int) -> ImageTexture:
+## Flow field of a direction layer at a frame, recomputed (GPU) only when
+## its strokes, field settings or the canvas change.
+func _flow_texture(dir_id: int, frame := -1) -> ImageTexture:
 	if dir_id <= 0:
 		return null
 	var d := App.project.layer_by_id(dir_id)
-	if d == null or not d.is_direction() or d.strokes.is_empty():
+	if d == null or not d.is_direction():
+		return null
+	var f := App.frame if frame < 0 else frame
+	var strokes := d.strokes_at(f)
+	var ds := DirStroke.DEFAULT_SETTINGS.duplicate()
+	ds.merge(d.settings.get("dir", {}), true)
+	if strokes.is_empty() and not ds.default_on:
 		return null
 	var px := App.project.canvas_px()
-	var key := str(px) + ":" + str(d.strokes.hash())
-	var entry: Dictionary = _flow.get(dir_id, {})
-	if entry.get("key", "") == key:
+	var key := "%s:%s:%s" % [px, hash(strokes.map(func(st): return DirStroke.to_json(st))), hash(ds)]
+	var ck := "%d:%d" % [dir_id, 0 if d.is_static else f]
+	var entry: Dictionary = _flow.get(ck, {})
+	if entry.get("key", "") == key or (App.in_change() and not entry.is_empty()):
 		return entry.tex
 	var res := Vector2i(App.project.canvas_cells).clamp(Vector2i.ONE, Vector2i(512, 512))
-	var img := Gpu.flow_field(d.strokes, res, px)
+	var img := Gpu.flow_field(strokes, res, px, float(ds.smoothing) * App.project.cell_size, ds.default_on, float(ds.default_angle))
 	var tex := ImageTexture.create_from_image(img)
-	_flow[dir_id] = {"key": key, "tex": tex}
+	_flow[ck] = {"key": key, "tex": tex, "img": img}
 	return tex
+
+
+## CPU copy of the field (for the arrow / streamline overlay and export).
+func flow_image(dir_id: int, frame := -1) -> Image:
+	var tex := _flow_texture(dir_id, frame)
+	if tex == null:
+		return null
+	var d := App.project.layer_by_id(dir_id)
+	var f := App.frame if frame < 0 else frame
+	return _flow.get("%d:%d" % [dir_id, 0 if d.is_static else f], {}).get("img")
 
 
 # ---- patterns -----------------------------------------------------------------
@@ -395,10 +429,23 @@ func _pattern_texture(layer: LayerData, frame: int, i: int, sl: Dictionary, t: T
 		key += str(_rd.get("%d:%d" % [layer.id, i], {}).get("key", ""))
 	if Patterns.uses_cells(sl):
 		key += str(hash(layer.frames[fi])) + str(App.project.palette)
+	if layer.setting("flow_patterns") and int(layer.setting("flow_layer")) > 0:
+		var fid := int(layer.setting("flow_layer"))
+		_flow_texture(fid, frame)
+		var fl := App.project.layer_by_id(fid)
+		var fk := "%d:%d" % [fid, 0 if fl == null or fl.is_static else frame]
+		key += "|flow" + str(_flow.get(fk, {}).get("key", "")) + str(layer.setting("flow_strength")) + "|" + str(_drift(layer, frame))
+	if layer.is_static and layer.setting("flow_animate"):
+		k += ":f%d" % frame
 	var e: Dictionary = _pat.get(k, {})
 	if e.get("key", "") == key or (App.in_change() and not e.is_empty()):
 		return e.tex
-	var img := Patterns.cell_map(sl, t, layer.frames[fi], App.project.palette, raster)
+	var fimg: Image = null
+	var fs := 0.0
+	if layer.setting("flow_patterns") and int(layer.setting("flow_layer")) > 0:
+		fimg = flow_image(int(layer.setting("flow_layer")), frame)
+		fs = float(layer.setting("flow_strength"))
+	var img := Patterns.cell_map(sl, t, layer.frames[fi], App.project.palette, raster, fimg, fs, _drift(layer, frame))
 	var tex: ImageTexture = e.get("tex")
 	if tex and tex.get_size() == Vector2(img.get_size()):
 		tex.update(img)
@@ -408,7 +455,12 @@ func _pattern_texture(layer: LayerData, frame: int, i: int, sl: Dictionary, t: T
 	return tex
 
 
-## Pattern map value image for export/inspection.
-func flow_image(dir_id: int) -> Image:
-	var tex := _flow_texture(dir_id)
-	return tex.get_image() if tex else null
+
+
+## Animated flow: patterns drift along the flow by `speed` pattern units per
+## frame. Each frame's maps are computed once (when visited, played or
+## exported) and cached.
+func _drift(layer: LayerData, frame: int) -> float:
+	if not layer.setting("flow_animate"):
+		return 0.0
+	return float(frame) * float(layer.setting("flow_speed")) * 0.25

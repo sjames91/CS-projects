@@ -136,10 +136,7 @@ func _add() -> void:
 	var at := App.frame + 1
 	_frame_op("Add frame", func():
 		for l in App.project.layers:
-			if not l.is_static:
-				var blank := PackedByteArray()
-				blank.resize(App.tiling_of(l).cell_count())
-				l.frames.insert(at, blank)
+			l.insert_frame(at, -1, App.tiling_of(l).cell_count())
 		App.project.frame_count += 1
 		App.project.frame_durations.insert(at, 0)
 		App.frame = at)
@@ -149,8 +146,7 @@ func _dup() -> void:
 	var src := App.frame
 	_frame_op("Duplicate frame", func():
 		for l in App.project.layers:
-			if not l.is_static:
-				l.frames.insert(src + 1, l.frames[src].duplicate())
+			l.insert_frame(src + 1, src, 0)
 		App.project.frame_count += 1
 		App.project.frame_durations.insert(src + 1, App.project.frame_durations[src])
 		App.frame = src + 1)
@@ -162,8 +158,7 @@ func _del() -> void:
 	var f := App.frame
 	_frame_op("Delete frame", func():
 		for l in App.project.layers:
-			if not l.is_static and f < l.frames.size():
-				l.frames.remove_at(f)
+			l.remove_frame(f)
 		App.project.frame_count -= 1
 		App.project.frame_durations.remove_at(f))
 
@@ -175,10 +170,7 @@ func _move(d: int) -> void:
 		return
 	_frame_op("Move frame", func():
 		for l in App.project.layers:
-			if not l.is_static:
-				var tmp := l.frames[f]
-				l.frames[f] = l.frames[to]
-				l.frames[to] = tmp
+			l.swap_frames(f, to)
 		var dd := App.project.frame_durations[f]
 		App.project.frame_durations[f] = App.project.frame_durations[to]
 		App.project.frame_durations[to] = dd

@@ -1,5 +1,5 @@
-extends SceneTree
-## Run: godot --path . -s tests/test_core.gd  (needs a Vulkan device)
+extends Node
+## Run: godot --path . res://tests/test_core.tscn  (needs a Vulkan device)
 
 var failures := 0
 
@@ -10,9 +10,10 @@ func check(cond: bool, msg: String) -> void:
 	else:
 		print("ok   ", msg)
 
-func _initialize() -> void:
-	await process_frame
-	var gpu = root.get_node("Gpu")
+func _ready() -> void:
+	await get_tree().process_frame
+	var gpu = get_node("/root/Gpu")
+	var root := get_tree().root
 	var canvas := Vector2(160, 128)
 	var variants: Array = []
 	for tid in TilingRegistry.ids():
@@ -69,8 +70,8 @@ func _initialize() -> void:
 	m3.shader = ShaderBuilder.compositor_shader(16)
 	cb.material = m3
 	root.add_child(cb)
-	await process_frame
-	await process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
 	# palette snap
 	var img := Image.create(4, 1, false, Image.FORMAT_RGBA8)
 	img.set_pixel(0, 0, Color(0.9, 0.1, 0.1))
@@ -106,7 +107,16 @@ func _initialize() -> void:
 	var old := {"format_version": 1, "width": 10, "height": 12, "cell": 4, "palette": ["ff0000"], "layers": [{"name": "a", "blend_mode": "multiply", "frames": []}]}
 	var mig: Dictionary = ProjectIO.from_dict(old)
 	check(mig.project.canvas_cells == Vector2i(10, 12) and mig.project.layers[0].blend_mode == 1, "v1 -> v2 migration")
+	var dl := p.add_layer("Dir", "direction")
+	dl.strokes_at(0).append(DirStroke.make("bezier", "path", PackedVector2Array([Vector2(1, 2), Vector2(3, 4), Vector2(5, 6), Vector2(7, 8)]), 12.0, 0.5))
+	dl.strokes_at(0).append(DirStroke.make("field", "swirl_ccw", PackedVector2Array([Vector2(50, 50), Vector2(60, 50)]), 40.0, 1.0))
+	var back3: Dictionary = ProjectIO.from_dict(JSON.parse_string(JSON.stringify(ProjectIO.to_dict(p))))
+	var bl: LayerData = back3.project.layers.back()
+	check(bl.is_direction() and bl.strokes_at(0).size() == 2 and bl.strokes_at(0)[0].points[3] == Vector2(7, 8) and bl.strokes_at(0)[1].type == "swirl_ccw", "direction strokes round trip")
+	var v2 := {"format_version": 2, "canvas": {"cells": [8, 8], "cell_size": 4}, "palette": [], "layers": [{"name": "d", "kind": "direction", "strokes": [[0, 0, 10, 10]], "frames": []}]}
+	var m2: Dictionary = ProjectIO.from_dict(v2)
+	check(m2.project.layers[0].strokes_at(0).size() == 1 and m2.project.layers[0].strokes_at(0)[0].points[1] == Vector2(10, 10), "v2 -> v3 stroke migration")
 	var newer: Dictionary = ProjectIO.from_dict({"format_version": 99, "palette": [], "layers": []})
 	check(newer.warnings.size() == 1, "newer-version file warns instead of failing")
 	print("FAILURES: ", failures)
-	quit(failures)
+	get_tree().quit(failures)
