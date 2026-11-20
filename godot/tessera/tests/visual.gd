@@ -179,3 +179,27 @@ func shapes() -> void:
 	await RenderingServer.frame_post_draw
 	w.get_texture().get_image().save_png(OS.get_environment("SHOT_DIR").path_join("shape_editor.png"))
 	w.hide()
+
+
+func exports() -> void:
+	await direction()
+	var bg: LayerData = app.project.layers[0]
+	app.set_active_layer(bg.id)
+	app.perform("frames", func():
+		bg.insert_frame(1, 0, 0)
+		app.project.frame_count = 2
+		app.project.frame_durations = PackedInt32Array([120, 120])
+		app.project.display = {"noise_on": true, "noise": 0.2, "interlace_on": true})
+	var dir := OS.get_environment("SHOT_DIR")
+	for i in Exporter.FORMATS.size():
+		var o := Exporter.default_options()
+		o.format = i
+		o.repeat = 2
+		if Exporter.FORMATS[i].id == "field":
+			app.set_active_layer(app.project.layers[1].id)
+		var msg: String = await Exporter.write(main, main.hub, dir.path_join("export_" + Exporter.FORMATS[i].id), o)
+		print("EXPORT ", Exporter.FORMATS[i].id, ": ", msg)
+	var o2 := Exporter.default_options()
+	o2.raw = true
+	o2.scale = 2
+	print("EXPORT raw: ", await Exporter.write(main, main.hub, dir.path_join("export_raw.png"), o2))

@@ -17,8 +17,6 @@ var _open_dialog: FileDialog
 var _save_dialog: FileDialog
 var _export_file: FileDialog
 var _export_win: AcceptDialog
-var _svg_out: FileDialog
-var _export_opts := {"scale": 1, "what": 0}
 var _canvas_win: ConfirmationDialog
 var _canvas_vals := {}
 var _canvas_is_new := false
@@ -142,8 +140,7 @@ func _build_menu() -> MenuBar:
 		["Save", C | KEY_S, save],
 		["Save As…", C | KEY_MASK_SHIFT | KEY_S, func(): _save_dialog.popup_centered_ratio(0.6)],
 		[],
-		["Export PNG…", C | KEY_E, func(): _export_win.popup_centered()],
-		["Export SVG (vector cells)…", 0, func(): _svg_out.popup_centered_ratio(0.6)],
+		["Export…", C | KEY_E, func(): _export_win.popup_centered()],
 		[],
 		["Quit", C | KEY_Q, _request_quit],
 	])
@@ -391,18 +388,6 @@ func _build_dialogs() -> void:
 	_quit_confirm.ok_button_text = "Quit without saving"
 	_quit_confirm.confirmed.connect(func(): get_tree().quit())
 	add_child(_quit_confirm)
-	_svg_out = FileDialog.new()
-	_svg_out.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	_svg_out.access = FileDialog.ACCESS_FILESYSTEM
-	_svg_out.filters = PackedStringArray(["*.svg ; SVG"])
-	_svg_out.title = "Export SVG — raster-only effects (CRT, fine textures, Display stack) are left out"
-	_svg_out.file_selected.connect(func(path):
-		if path.get_extension() == "":
-			path += ".svg"
-		var f := FileAccess.open(path, FileAccess.WRITE)
-		f.store_string(Svg.artwork_svg(App.project, App.frame))
-		App.status.emit("Exported " + path.get_file() + " (vector cells; raster effects omitted)"))
-	add_child(_svg_out)
 	_build_export_win()
 	_build_canvas_win()
 
@@ -462,27 +447,50 @@ func _notification(what: int) -> void:
 
 # ---- export ------------------------------------------------------------------
 
+var _export_opts := Exporter.default_options()
+var _svg_note: Label
+
+
 func _build_export_win() -> void:
 	_export_win = AcceptDialog.new()
-	_export_win.title = "Export PNG"
+	_export_win.title = "Export"
 	_export_win.ok_button_text = "Choose file…"
 	var v := VBoxContainer.new()
+	var names: Array = Exporter.FORMATS.map(func(f): return f.name)
+	v.add_child(UiKit.hbox([UiKit.label("Format"), UiKit.option(names, 0, func(i):
+		_export_opts.format = i
+		_svg_note.visible = Exporter.FORMATS[i].id == "svg")]))
+	_svg_note = UiKit.label("SVG holds vector cells only: CRT, fine textures and the Display stack are raster effects and are left out.", true)
+	_svg_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_svg_note.custom_minimum_size.x = 380
+	_svg_note.visible = false
+	v.add_child(_svg_note)
 	var sc := SpinBox.new()
 	sc.min_value = 1
 	sc.max_value = 16
 	sc.value = 1
 	sc.value_changed.connect(func(x): _export_opts.scale = int(x))
-	v.add_child(UiKit.hbox([UiKit.label("Scale ×"), sc, UiKit.label("(1 = cell size px per cell)", true)]))
-	v.add_child(UiKit.option(["Current frame", "All frames (numbered PNGs)", "All frames (horizontal sprite sheet)"], 0, func(i): _export_opts.what = i))
+	v.add_child(UiKit.hbox([UiKit.label("Scale ×"), sc, UiKit.label("(layers re-render at this scale)", true)]))
+	v.add_child(UiKit.option(["Fully rendered", "Raw cells (flat shapes)"], 0, func(i): _export_opts.raw = i == 1))
+	v.add_child(UiKit.option(["All visible layers", "Selected layer only"], 0, func(i): _export_opts.only_selected = i == 1))
+	var rp := SpinBox.new()
+	rp.min_value = 1
+	rp.max_value = 32
+	rp.value = 1
+	rp.tooltip_text = "Repeat the animation N times so animated features (flicker, noise, drifting flow) get distinct frames"
+	rp.value_changed.connect(func(x): _export_opts.repeat = int(x))
+	v.add_child(UiKit.hbox([UiKit.label("Repeat animation ×"), rp]))
 	v.add_child(HSeparator.new())
 	var lock := App.project.palette_lock
-	v.add_child(UiKit.header("Palette Lock (final output only)"))
+	v.add_child(UiKit.header("Palette Lock (last step of every raster export)"))
 	v.add_child(UiKit.toggle("Snap to palette (OKLab)", lock.get("enabled", false), func(on): _set_lock("enabled", on)))
 	v.add_child(UiKit.toggle("Dither at the snap step", lock.get("dither", false), func(on): _set_lock("dither", on)))
 	v.add_child(UiKit.slider_row("Dither strength", 0, 1, 0.01, lock.get("strength", 0.5), func(x): _set_lock("strength", x), func(): pass, func(): pass))
 	_export_win.add_child(v)
 	_export_win.confirmed.connect(func():
-		_export_file.current_file = (App.project_path.get_file().get_basename() if App.project_path != "" else "artwork") + ".png"
+		var fmt: Dictionary = Exporter.FORMATS[_export_opts.format]
+		_export_file.filters = PackedStringArray(["*.%s ; %s" % [fmt.ext, fmt.name]])
+		_export_file.current_file = (App.project_path.get_file().get_basename() if App.project_path != "" else "artwork") + "." + fmt.ext
 		_export_file.popup_centered_ratio(0.6))
 	add_child(_export_win)
 
@@ -493,61 +501,18 @@ func _set_lock(key: String, v: Variant) -> void:
 	App.view_changed.emit()
 
 
-## Final output for one frame: every visible layer rendered fresh at export
-## resolution, composited on the GPU, then Palette Lock (if on) on the GPU.
+## Final output for one frame (kept for tests / scripting).
 func render_frame_image(frame: int, scale: int) -> Image:
-	var px := App.project.canvas_px()
-	var out_size := Vector2i(px * scale)
-	var textures := {}
-	for l in App.project.layers:
-		if l.is_direction() or not App.layer_shown(l):
-			continue
-		var limg: Image = await hub.render_layer_image(l, frame, out_size)
-		textures[l.id] = ImageTexture.create_from_image(limg)
-	var cv := CompositeView.new()
-	cv.texture_override = textures
-	cv.frame_override = frame
-	cv.display_frame = float(frame)
-	cv.size = out_size
-	cv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	add_child(cv)
-	cv.hub = hub
-	cv.set_view(float(scale), Vector2.ZERO)
-	cv.rebuild()
-	await RenderingServer.frame_post_draw
-	await RenderingServer.frame_post_draw
-	var img := cv.get_texture().get_image()
-	cv.queue_free()
-	var lock := App.project.palette_lock
-	if lock.get("enabled", false):
-		img = Gpu.palette_snap(img, App.project.palette, lock.get("dither", false), lock.get("strength", 0.5))
-	return img
+	var o := Exporter.default_options()
+	o.scale = scale
+	return await Exporter.render_frame(self, hub, frame, frame, o)
 
 
 func export_png(path: String) -> void:
-	if path.get_extension() == "":
-		path += ".png"
-	var scale: int = _export_opts.scale
-	var n := App.project.frame_count
 	_busy.visible = true
-	match int(_export_opts.what):
-		0:
-			var img: Image = await render_frame_image(App.frame, scale)
-			img.save_png(path)
-		1:
-			for f in n:
-				var img: Image = await render_frame_image(f, scale)
-				img.save_png("%s_%03d.png" % [path.get_basename(), f + 1])
-		2:
-			var first: Image = await render_frame_image(0, scale)
-			var sheet := Image.create(first.get_width() * n, first.get_height(), false, first.get_format())
-			sheet.blit_rect(first, Rect2i(Vector2i.ZERO, first.get_size()), Vector2i.ZERO)
-			for f in range(1, n):
-				var img: Image = await render_frame_image(f, scale)
-				sheet.blit_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), Vector2i(first.get_width() * f, 0))
-			sheet.save_png(path)
+	var msg: String = await Exporter.write(self, hub, path, _export_opts)
 	_busy.visible = hub.is_busy()
-	App.status.emit("Exported " + path.get_file())
+	App.status.emit(msg)
 
 
 # ---- canvas size / new -------------------------------------------------------

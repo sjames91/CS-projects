@@ -143,6 +143,19 @@ func _ready() -> void:
 			if a[k].distance_to(b[b.size() - 1 - k] - t) > 1e-4:
 				ok_pair = false
 	check(ok_pair, "imported SVG fitted to a tile keeps opposite edges paired")
+	# GIF / APNG encoders produce well-formed files.
+	var fa := Image.create(6, 4, false, Image.FORMAT_RGBA8)
+	fa.fill(Color.RED)
+	var fb := Image.create(6, 4, false, Image.FORMAT_RGBA8)
+	fb.fill(Color.BLUE)
+	var g := Encoders.gif([fa, fb], [10, 10], PackedColorArray([Color.RED, Color.BLUE]))
+	check(g.slice(0, 6).get_string_from_ascii() == "GIF89a" and g[g.size() - 1] == 0x3B, "GIF header and trailer")
+	var idx := Encoders.index_image(fb, PackedColorArray([Color.RED, Color.BLUE]))
+	check(idx.size() == 24 and idx.count(1) == 24, "GIF indices from GPU OKLab match")
+	var ap := Encoders.apng([fa, fb], [100, 100])
+	var back := Image.new()
+	check(back.load_png_from_buffer(ap) == OK and back.get_pixel(0, 0).is_equal_approx(Color.RED), "APNG opens as a PNG showing frame 1")
+	check(Encoders._crc32("IEND".to_ascii_buffer()) == 0xAE426082, "PNG CRC32")
 	var newer: Dictionary = ProjectIO.from_dict({"format_version": 99, "palette": [], "layers": []})
 	check(newer.warnings.size() == 1, "newer-version file warns instead of failing")
 	print("FAILURES: ", failures)

@@ -275,7 +275,7 @@ func _render_cache(layer: LayerData, frame: int) -> void:
 
 
 ## Render one layer at an arbitrary resolution right now (export).
-func render_layer_image(layer: LayerData, frame: int, size: Vector2i) -> Image:
+func render_layer_image(layer: LayerData, frame: int, size: Vector2i, raw := false) -> Image:
 	while _rendering:
 		await RenderingServer.frame_post_draw
 	_rendering = true
@@ -285,7 +285,7 @@ func render_layer_image(layer: LayerData, frame: int, size: Vector2i) -> Image:
 	var mat := _rect.material as ShaderMaterial
 	configure_material(mat, layer, frame)
 	mat.set_shader_parameter("output_mode", 1)
-	mat.set_shader_parameter("raw_mode", false)
+	mat.set_shader_parameter("raw_mode", raw)
 	mat.set_shader_parameter("node_origin", Vector2.ZERO)
 	mat.set_shader_parameter("node_size", px)
 	mat.set_shader_parameter("tile_mode", false)

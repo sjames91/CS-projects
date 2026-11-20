@@ -16,6 +16,8 @@ var raw_only := false          # Render toggle OFF
 var tile_mode := false
 var onion: Dictionary = {}     # {"before": n, "after": n, "opacity": f}
 var texture_override := {}     # lid -> Texture2D (export: pre-rendered layers)
+var only_layers: Array = []    # export: restrict to these layer ids
+var no_display := false        # export raw cells: skip the Display stack
 
 var _zoom := 1.0
 var _pan := Vector2.ZERO
@@ -110,6 +112,8 @@ func _entries() -> Array:
 	else:
 		for l in App.project.layers:
 			if l.is_direction() or not App.layer_shown(l):
+				continue
+			if not only_layers.is_empty() and not only_layers.has(l.id):
 				continue
 			if not onion.is_empty() and l.id == App.active_layer_id and not l.is_static:
 				out.append_array(_onion_entries(l, f))
@@ -207,7 +211,7 @@ func rebuild() -> void:
 		add_child(vp)
 		_passes.append(vp)
 		entries.push_front({"tex": vp.get_texture(), "space": 1, "opacity": 1.0, "mode": 0, "tint": Color.WHITE})
-	var use_display := not raw_only and DisplayStack.any_on(App.project)
+	var use_display := not raw_only and not no_display and DisplayStack.any_on(App.project)
 	if use_display:
 		if _pre == null:
 			_pre = SubViewport.new()
