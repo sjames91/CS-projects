@@ -9,65 +9,81 @@ because compute shaders (RenderingDevice) need Vulkan / Metal / D3D12.
 
 ## Status
 
-**Part 1 (full pixel editor): built and tested.**
+Everything in the spec is built, in its build order. Tests run under a
+real Vulkan device (see Tests). Known gaps are listed at the end.
 
-- Canvas: size + cell size, grid lines, 9-point anchored resize (every layer and
-  direction stroke moves with the anchor; GPU resample)
-- Tools: pencil, eraser, eyedropper, line, rectangle, ellipse (outline/filled,
-  brush size), flood fill (contiguous/global, OKLab tolerance), rectangle /
-  lasso / magic-wand selection (add/subtract), move (Alt = copy), cut/copy/
-  paste/delete, flip, rotate by the tiling's own symmetry step, mirror
-  drawing (H/V/both), wrap-around drawing, 3×3 tile preview
-- Mouse: left draws, right erases with any tool, wheel zooms at the cursor,
-  middle-drag (or Space-drag) pans
-- Layers: add, delete, duplicate, reorder, rename (double-click), show/hide,
-  solo, lock, opacity, blend mode (normal, multiply, screen, overlay, add),
-  static layers
-- Color: one shared palette (≤255), add/remove/reorder (cells keep their color
-  through a GPU remap), PNG import (A: exact unique colors in image order;
-  B: k-means in OKLab to N colors, sorted into ramps), preview before accept,
-  replace or append; export as PNG swatch strip, .hex, .gpl
-- Palette Lock (final output only): OKLab nearest-color snap on export, with
-  optional ordered dithering and strength; preview panel can show it
-- Render toggle (Tab): full result vs. the selected layer's raw flat cells
-- Preview panel: always the whole fully rendered image, never UI; palette
-  lock view; click/drag to navigate the main view; hide with P, resizable
-- Undo/redo: one completed action = one step (stroke, fill, full slider drag…)
-- Save/load `.tessera` (JSON; cells zstd + base64). Every file stores a
-  `format_version`; older files run through one small migration function per
-  version (`ProjectIO.MIGRATIONS`); newer files load with a warning
-- Export PNG: current frame, numbered frames, or sprite sheet, at any scale
+- **Part 1, full editor:** all tools through the Tiling interface, layers,
+  shared palette with OKLab matching, PNG palette import (exact / k-means),
+  Palette Lock, render toggle, preview panel, undo/redo, versioned
+  save/load with migrations (project format v3).
+- **Part 2, animation:** per-layer frames, static layers, timeline,
+  playback (loop / ping-pong / once), onion skin, per-frame caches;
+  animated features (interlace flicker, static noise, flow drift) get
+  their own frames when playing or exporting.
+- **Layer Settings (all six sections):**
+  - 1 Tiling: square, hexagon, triangle, diamond, Voronoi, and custom
+    Shape Editor tilings.
+  - 2 Cell style: flat, dot, cross-stitch, LED, Lite-Brite, brush dab,
+    mosaic, CRT phosphor, SVG stamp.
+  - 3 Features: rounding (color-aware outer / inner+outer), gap/grout,
+    dithered boundaries, jitter (random / pattern / flow), scanlines,
+    phosphor masks, beam spot, horizontal bleed.
+  - 4 Patterns: up to 4 stacked slots. Sources: reaction-diffusion, value /
+    Perlin / fractal noise, Worley, halftone, Bayer, hatching, weave, knit,
+    wood, marble, lightness. Each slot drives style, size, rotation,
+    rounding, gap, jitter, palette shift and visibility, with color filter,
+    seed + Randomize, map view and fine texture.
+  - 5 Offset: half X/Y/both, brick rows/columns (only on non-staggered
+    tilings), amount; a Tiling decorator, so clicks land on shifted cells.
+  - 6 Flow: follow a direction layer with a strength; stamp / cell rotation,
+    pattern bending, anisotropic reaction-diffusion, jitter push, animated
+    drift.
+- **Display stack:** curvature, vignette, bloom, chromatic aberration,
+  interlace flicker, static noise; TV / arcade / PVM / handheld presets.
+  Order: layers → Display → Palette Lock → export.
+- **Part 4, direction layers:** arrow, curve, Bezier and edit tools; swirl
+  and radial strokes; per-stroke radius and strength; smoothing and default
+  direction; field as arrows or streamlines (main canvas only); per frame;
+  SVG paths to strokes.
+- **Shape Editor:** tiling shapes that always tile (paired edges by
+  construction, curved edges, linked corners, built-in chevron / puzzle /
+  fish scale / lizard), stamp shapes with holes, SVG import (as stamp or
+  fitted to a base tile) and export.
+- **Presets and library:** 21 built-in layer presets plus display,
+  direction and full-stack presets; user presets and shapes stored as
+  versioned files in `user://library`, with zip export/import; projects
+  embed the shapes they use.
+- **Export** (`Exporter.FORMATS` registry): PNG at any scale (rendered or
+  raw cells, all layers or one), zipped PNG sequence, animated GIF and APNG
+  (built-in encoders), SVG vector cells, direction field image.
+- **Flatten / Apply** (Layer menu): the only action that bakes effects
+  (pattern palette shift and visibility) into cells.
 
-**Tilings** (all through one interface, `src/tiling/tiling.gd`): square,
-hexagon, triangle, diamond, Voronoi (jitter + seed). Changing a layer's tiling
-resamples its cells (with a confirm dialog).
+### Known gaps
 
-**Layer settings built so far:** tiling; cell styles (flat, dot, cross-stitch X,
-LED dot, Lite-Brite peg, brush dab, mosaic tile, CRT phosphor); features:
-rounding (plain, or color-aware with outer-only / inner+outer corners), gap +
-grout color, hard or dithered color boundaries, jitter (position, size, rotation,
-seed) driven by random or by a Direction Layer's flow, CRT scanlines, phosphor masks (aperture grille, slot, shadow),
-beam spot, horizontal bleed.
-
-**Part 2 (animation) — partly built:** frames per layer, static layers,
-add/duplicate/delete/reorder frames, per-frame duration + FPS, play/pause,
-loop/ping-pong/once, step, onion skin on the main canvas. Animated features
-(flicker, noise, flow motion) are not built yet.
-
-**Not built yet:** Patterns (reaction-diffusion, noise, Worley, halftone,
-Bayer, hatching, weave/knit, wood/marble) and what they drive; SVG stamps
-and the Shape Editor; Offset; the rest of the spec after "Jitter" in Part 3.
-
-**Direction layers:** draw arrows/curves (left), erase strokes (right). A
-flow field is computed on the GPU from the strokes (only when a stroke is
-finished) and any layer can follow it via Jitter → Driven by → Flow.
+- Curved outlines are flattened at a fixed resolution (6 segments per
+  curve), not matched to zoom or export scale.
+- Plain rounding is not applied to custom-shape tilings (gap and
+  color-aware rounding work). Color-aware rounding ignores pattern drives.
+- Still on the CPU in GDScript: flood fill, global fill and wand, move
+  lift, selection transforms, the per-cell SVG text, GIF LZW and APNG CRC.
+  Fine at 64×64; not measured at 256×256.
+- The 256×256 / 10-layer performance target and the export presets
+  (`export_presets.cfg`) have not been checked on real hardware or with
+  export templates.
 
 ## Architecture
 
 ```
 src/core     App (autoload state + undo helpers), ProjectData, LayerData,
              ProjectIO (save/load/migrations), OkLab, UndoStack
-src/tiling   Tiling interface + square/hex/triangle/diamond/voronoi, registry
+src/tiling   Tiling interface + square/hex/triangle/diamond/voronoi,
+             OffsetTiling decorator, registry
+src/shapes   Shape model, ShapeTiling, SVG import/export, stamp SDF
+src/patterns Pattern GLSL library, per-cell map + reaction-diffusion kernels
+src/direction DirStroke (types, Bezier, presets)
+src/library  Presets and user library storage
+src/export   Exporter registry, GIF / APNG encoders
 src/gpu      Gpu autoload: compute kernels (palette snap, unique colors,
              k-means, cross-tiling resample, palette remap, flow field)
 src/render   ShaderBuilder (layer, overlay, compositor shaders), RenderHub
@@ -109,4 +125,5 @@ Needs a Vulkan device (a software one such as lavapipe works):
 godot --path . res://tests/test_core.tscn      # tilings × offsets, GPU kernels, IO, migrations
 godot --path . res://tests/interaction.tscn    # real mouse events on the canvas
 godot --path . res://tests/screenshot.tscn     # renders every tiling/style (SHOT_DIR=…)
+SCENARIO=patterns godot --path . res://tests/visual.tscn   # see tests/visual.gd
 ```

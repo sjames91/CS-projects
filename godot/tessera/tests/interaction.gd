@@ -163,6 +163,32 @@ func _ready() -> void:
 	check(bl.cells(0)[bt2.index(Vector2i(26, 11))] == v_before and v_before != 0, "resize with anchor shifts content by (16, 6) cells")
 	app.do_undo()
 	check(app.project.canvas_cells == Vector2i(64, 64), "resize is undoable")
+	# Presets apply settings only, as one undo step.
+	var pl: LayerData = app.project.layers[0]
+	var cells_before: PackedByteArray = pl.cells(0).duplicate()
+	var mosaic: Dictionary = Library.builtin_layer_presets().filter(func(x): return x.name == "Mosaic")[0]
+	Library.apply_layer_preset(pl, mosaic)
+	check(int(pl.setting("style")) == LayerData.Style.MOSAIC and pl.cells(0) == cells_before, "layer preset changes settings, not cells")
+	var puzzle_p: Dictionary = Library.builtin_layer_presets().filter(func(x): return x.name == "Puzzle")[0]
+	Library.apply_layer_preset(pl, puzzle_p)
+	check(pl.tiling_id.begins_with("shape:") and app.project.shapes.has(pl.tiling_id.substr(6)), "shape preset embeds its shape in the project")
+	app.do_undo()
+	check(pl.tiling_id == "square" and pl.cells(0) == cells_before, "preset is one undo step")
+	Library.add("layer", Library.layer_preset_from(pl, "test preset"))
+	Library.load_user()
+	check(Library.items("layer").back().name == "test preset", "user preset saved to the library folder and reloaded")
+	Library.remove("layer", Library.items("layer").size() - 1)
+	# Flatten / Apply bakes visibility into cells (explicit action only).
+	var hide_all := Patterns.default_slot()
+	hide_all.source = Patterns.Src.VALUE_NOISE
+	hide_all.drives = Patterns.Drive.VISIBILITY
+	hide_all.visibility = 1.1
+	app.perform("pat", func(): pl.settings.patterns = [hide_all])
+	check(pl.cells(0) == cells_before, "patterns never change cells by themselves")
+	main.hub.flatten_patterns(pl)
+	check(pl.cells(0).count(0) == pl.cells(0).size() and int(pl.settings.patterns[0].drives) == 0, "Flatten/Apply bakes visibility and clears the drive")
+	app.do_undo()
+	check(pl.cells(0) == cells_before, "Flatten/Apply is undoable")
 	# Settings tab screenshot.
 	var tabs: TabContainer = main.find_children("*", "TabContainer", true, false)[0]
 	tabs.current_tab = 1

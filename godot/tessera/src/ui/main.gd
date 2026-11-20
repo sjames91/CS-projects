@@ -71,6 +71,7 @@ func _ready() -> void:
 	tabs.add_child(LayersPanel.new())
 	tabs.add_child(LayerSettingsPanel.new())
 	tabs.add_child(DisplayPanel.new())
+	tabs.add_child(LibraryPanel.new())
 	lower.add_child(tabs)
 	timeline = TimelinePanel.new()
 	timeline.onion_changed.connect(canvas.set_onion)
@@ -179,6 +180,12 @@ func _build_menu() -> MenuBar:
 		["Fit canvas", C | KEY_0, func(): canvas.fit_view()],
 		["Zoom in", KEY_EQUAL, func(): canvas.zoom_at(canvas.size * 0.5, 1.25)],
 		["Zoom out", KEY_MINUS, func(): canvas.zoom_at(canvas.size * 0.5, 0.8)],
+	])
+	_menu(bar, "Layer", [
+		["Flatten / Apply pattern palette shift + visibility into cells", 0, func():
+			var l := App.active_layer()
+			if l and not l.is_direction():
+				hub.flatten_patterns(l)],
 	])
 	_menu(bar, "Shapes", [
 		["Shape Editor…", C | KEY_MASK_SHIFT | KEY_E, open_shape_editor],

@@ -203,3 +203,12 @@ func exports() -> void:
 	o2.raw = true
 	o2.scale = 2
 	print("EXPORT raw: ", await Exporter.write(main, main.hub, dir.path_join("export_raw.png"), o2))
+
+
+func presets() -> void:
+	var bg: LayerData = app.active_layer()
+	fill_layer(bg, func(c, p): return [16, 17, 18, 19, 6, 9, 10][int(p.x / 74 + p.y / 90) % 7])
+	var by_name := {}
+	for pr in Library.builtin_layer_presets():
+		by_name[pr.name] = pr
+	Library.apply_layer_preset(bg, by_name[OS.get_environment("PRESET") if OS.get_environment("PRESET") != "" else "Stained glass"])

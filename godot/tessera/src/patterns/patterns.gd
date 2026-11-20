@@ -341,3 +341,51 @@ void main() {
 	var data: PackedByteArray = res[0] if not res.is_empty() else outb
 	data.resize(rw * rh * 4)
 	return Image.create_from_data(rw, rh, false, Image.FORMAT_RF, data)
+
+
+## GPU bake of palette shift + visibility drives into cell indexes.
+## maps: MAX_SLOTS consecutive float maps; cfg: per slot (flags, shift lo,
+## shift hi, visibility); filt: per slot 8 filter words + "filtered" flag.
+static func flatten(cells: PackedByteArray, maps: PackedByteArray, cfg: PackedFloat32Array, filt: PackedInt32Array, pal_count: int) -> PackedByteArray:
+	var n := cells.size()
+	var code := """#version 450
+layout(local_size_x = 64) in;
+layout(set = 0, binding = 0, std430) restrict buffer Cells { uint b[]; } cells;
+layout(set = 0, binding = 1, std430) restrict readonly buffer Maps { float m[]; } maps;
+layout(set = 0, binding = 2, std430) restrict readonly buffer Cfg { vec4 c[]; } cfg;
+layout(set = 0, binding = 3, std430) restrict readonly buffer Filt { int f[]; } filt;
+layout(push_constant, std430) uniform P { int n; int pal; } pc;
+bool applies(int s, int v) {
+	if (filt.f[s * 9 + 8] == 0) { return true; }
+	return ((filt.f[s * 9 + (v >> 5)] >> (v & 31)) & 1) != 0;
+}
+void main() {
+	uint w = gl_GlobalInvocationID.x;
+	if (w >= uint((pc.n + 3) / 4)) { return; }
+	uint word = cells.b[w];
+	uint outw = 0u;
+	for (uint k = 0u; k < 4u; k++) {
+		int idx = int(w * 4u + k);
+		int v = int((word >> (k * 8u)) & 255u);
+		int v0 = v;
+		if (idx < pc.n && v > 0) {
+			for (int s = 0; s < 4; s++) {
+				if (!applies(s, v0)) { continue; }
+				int fl = int(cfg.c[s].x);
+				float x = maps.m[s * pc.n + idx];
+				if ((fl & 128) != 0 && x < cfg.c[s].w) { v = 0; break; }
+				if ((fl & 64) != 0) { v = clamp(v + int(round(mix(cfg.c[s].y, cfg.c[s].z, x))), 1, pc.pal); }
+			}
+		}
+		outw |= uint(v & 255) << (k * 8u);
+	}
+	cells.b[w] = outw;
+}
+"""
+	var words := ceili(n / 4.0)
+	var res := Gpu.run("flatten_patterns", code, [cells, maps, cfg.to_byte_array(), filt.to_byte_array()], Gpu.push().i(n).i(maxi(pal_count, 1)).bytes, Vector3i(ceili(words / 64.0), 1, 1), [0])
+	if res.is_empty():
+		return cells
+	var out: PackedByteArray = res[0]
+	out.resize(n)
+	return out

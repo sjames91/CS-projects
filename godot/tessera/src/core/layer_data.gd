@@ -234,3 +234,26 @@ func swap_frames(a: int, b: int) -> void:
 	var u = stroke_frames[a]
 	stroke_frames[a] = stroke_frames[b]
 	stroke_frames[b] = u
+
+
+
+## JSON turns ints into floats; restore the types the shaders expect.
+static func normalize_settings(st: Dictionary) -> Dictionary:
+	for k in st.keys():
+		if DEFAULT_SETTINGS.has(k):
+			match typeof(DEFAULT_SETTINGS[k]):
+				TYPE_INT:
+					st[k] = int(st[k])
+				TYPE_BOOL:
+					st[k] = bool(st[k])
+				TYPE_FLOAT:
+					st[k] = float(st[k])
+	for sl in st.get("patterns", []):
+		for k in ["source", "seed", "octaves", "mode", "iterations", "drives", "style_count"]:
+			if sl.has(k):
+				sl[k] = int(sl[k])
+		if sl.has("styles"):
+			sl.styles = (sl.styles as Array).map(func(x): return int(x))
+		if sl.has("colors"):
+			sl.colors = (sl.colors as Array).map(func(x): return int(x))
+	return st

@@ -88,9 +88,7 @@ static func from_dict(src: Dictionary) -> Dictionary:
 		meta["id"] = int(meta.get("id", p.next_layer_id))
 		meta["blend_mode"] = int(meta.get("blend_mode", 0))
 		l.apply_meta(meta)
-		for k in l.settings.keys():
-			if LayerData.DEFAULT_SETTINGS.has(k) and typeof(LayerData.DEFAULT_SETTINGS[k]) == TYPE_INT:
-				l.settings[k] = int(l.settings[k])
+		LayerData.normalize_settings(l.settings)
 		for f in ld.get("frames", []):
 			var raw := Marshalls.base64_to_raw(f.zstd)
 			l.frames.append(raw.decompress(int(f.size), FileAccess.COMPRESSION_ZSTD))

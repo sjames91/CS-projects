@@ -486,3 +486,44 @@ func stamp_texture(shape_id: String) -> ImageTexture:
 	var tex := ImageTexture.create_from_image(Shape.stamp_sdf(sh))
 	_stamps[shape_id] = {"key": key, "tex": tex}
 	return tex
+
+
+## Flatten / Apply (explicit user action): bake pattern-driven palette
+## shift and visibility into the layer's cells for every frame (GPU), then
+## remove those drives so nothing is applied twice. One undo step.
+func flatten_patterns(layer: LayerData) -> void:
+	var slots := Patterns.slots(layer)
+	if slots.is_empty():
+		App.status.emit("No patterns to apply")
+		return
+	App.perform("Flatten / Apply patterns", func():
+		var t := App.tiling_of(layer)
+		var n := t.cell_count()
+		var cfg := PackedFloat32Array()
+		var filt := PackedInt32Array()
+		filt.resize(Patterns.MAX_SLOTS * 9)
+		for i in Patterns.MAX_SLOTS:
+			var sl: Dictionary = slots[i] if i < slots.size() else Patterns.default_slot()
+			var fl := int(sl.drives) & (Patterns.Drive.PALETTE_SHIFT | Patterns.Drive.VISIBILITY) if i < slots.size() else 0
+			cfg.append_array([float(fl), float(sl.shift[0]), float(sl.shift[1]), float(sl.visibility)])
+			var cols: Array = sl.get("colors", [])
+			filt[i * 9 + 8] = 1 if not cols.is_empty() else 0
+			for c in cols:
+				filt[i * 9 + (int(c) >> 5)] |= 1 << (int(c) & 31)
+		for fi in layer.frames.size():
+			var maps := PackedByteArray()
+			maps.resize(n * 4 * Patterns.MAX_SLOTS)
+			for i in mini(slots.size(), Patterns.MAX_SLOTS):
+				var r = _rd_raster(layer, i, slots[i])
+				var tex := _pattern_texture(layer, fi, i, slots[i], t, r.img if r else null)
+				var d := tex.get_image().get_data()
+				# copy slot map into the packed buffer (native slice ops)
+				var head := maps.slice(0, i * n * 4)
+				var tail := maps.slice((i + 1) * n * 4)
+				head.append_array(d.slice(0, n * 4))
+				head.append_array(tail)
+				maps = head
+			layer.frames[fi] = Patterns.flatten(layer.frames[fi], maps, cfg, filt, App.project.palette.size())
+		for sl in slots:
+			sl.drives = int(sl.drives) & ~(Patterns.Drive.PALETTE_SHIFT | Patterns.Drive.VISIBILITY)
+	, [layer.id])
