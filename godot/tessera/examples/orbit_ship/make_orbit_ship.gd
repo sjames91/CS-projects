@@ -17,7 +17,7 @@ extends Node
 ##   Rivets           square with half-both Offset, small dots
 ##   Glass            hex, colour-aware rounding (smooth canopy)
 ##   Nav lights       LED dots, blinking per frame
-## Display stack: bloom + slight chromatic aberration.
+## Display stack: restrained bloom. Palette Lock on (no dither).
 
 const CS := 6
 const W := 112
@@ -211,8 +211,14 @@ func build() -> void:
 	p.shapes["sparkle"] = sparkle
 	p.register_shapes()
 
-	var space := layer("Space", "square", {"boundary_mode": 1, "boundary_width": 1.0})
-	paint(space, func(u: Vector2, _f: int): return 1 if u.y < 16 else (2 if u.y < 32 else 3))
+	# Sky: four steps that brighten toward the horizon, following its curve,
+	# with ordered dither between steps (wide, soft transitions).
+	var space := layer("Space", "square", {})
+	paint(space, func(u: Vector2, _f: int):
+		var t := clampf(1.0 - earth_dist(u) / 44.0, 0.0, 1.0) * 3.0  # 0 far .. 3 at horizon
+		var c := Vector2i(floor(u.x), floor(u.y))
+		var b := ph_bayer(c)
+		return 1 + mini(int(floor(t + b)), 3))
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
@@ -235,7 +241,8 @@ func build() -> void:
 		if d > 0.0:
 			return 0
 		# Perspective: squash the map toward the limb.
-		var n := noise.get_noise_2d(u.x * 0.9, (u.y - 44.0) * 3.0 + 40.0)
+		var e := earth_uv(u)
+		var n := noise.get_noise_2d(e.x * 0.9, e.y * 3.0 + 40.0)
 		var night := u.x > 92
 		if n > 0.22:
 			return 28 if night or n < 0.4 else 29
@@ -250,14 +257,15 @@ func build() -> void:
 	paint(clouds, func(u: Vector2, _f: int):
 		if earth_dist(u) > -0.5:
 			return 0
-		return 30 if cloud_noise.get_noise_2d(u.x * 0.8, (u.y - 44.0) * 3.2) > 0.12 else 0)
+		var e := earth_uv(u)
+		return 30 if cloud_noise.get_noise_2d(e.x * 0.8, e.y * 3.2) > 0.12 else 0)
 
-	var atmo := layer("Atmosphere", "hex", {"rounding_on": true, "rounding": 0.6})
+	var atmo := layer("Atmosphere", "hex", {"rounding_on": true, "rounding": 1.0, "rounding_color_aware": true, "rounding_inner": true})
 	atmo.blend_mode = LayerData.Blend.SCREEN
 	atmo.opacity = 0.7
 	paint(atmo, func(u: Vector2, _f: int):
 		var d := earth_dist(u)
-		return 27 if d >= -0.6 and d < 1.6 else (4 if d >= 1.6 and d < 3.6 else 0))
+		return 27 if d >= -0.8 and d < 1.4 else 0)
 
 	# Engine exhaust: animated frames, follows the Exhaust direction layer.
 	var flame := layer("Exhaust", "hex", {"style": LayerData.Style.BRUSH_DAB, "dot_size": 1.0, "flow_stamp_rot": true,
@@ -287,18 +295,21 @@ func build() -> void:
 			return 20
 		return 19)
 
-	var hull_l := layer("Hull", "square", {"rounding_on": true, "rounding": 0.25, "gap_on": true, "gap": 0.07, "grout_color": "#15171c",
+	var hull_l := layer("Hull", "square", {"rounding_on": true, "rounding": 0.2, "gap_on": true, "gap": 0.045, "grout_color": "#3a3f4a",
 		"patterns": [_slot({"source": Patterns.Src.WORLEY, "mode": 0, "scale": 3.0, "drives": Patterns.Drive.PALETTE_SHIFT,
-			"shift": [0.0, -1.0], "colors": [7, 8, 9], "fine": true, "fine_amount": 0.18})]})
+			"shift": [0.0, -1.0], "colors": [7, 8, 9]})]})
 	paint(hull_l, func(u: Vector2, _f: int): return hull_color(u.x - SHIP.x, u.y - SHIP.y))
 
-	var rivets := layer("Rivets", "square", {"style": LayerData.Style.DOT, "dot_size": 0.22})
-	rivets.opacity = 0.75
+	# Rivets sit on plate corners: the Offset section shifts this layer's grid
+	# by half a cell both ways.
+	var rivets := layer("Rivets", "square", {"style": LayerData.Style.DOT, "dot_size": 0.16, "offset_mode": 3, "offset_amount": 0.5})
+	rivets.opacity = 0.45
 	paint(rivets, func(u: Vector2, _f: int):
 		var x: float = u.x - SHIP.x
 		var y: float = u.y - SHIP.y
 		var c := Vector2i(floor(u.x), floor(u.y))
-		if hull(x, y) and hull(x + 1, y + 1) and not glass(x, y) and (c.x + c.y * 3) % 5 == 0 and not engine(x, y):
+		if hull(x - 1, y - 1) and hull(x + 1, y + 1) and hull(x - 1, y + 1) and hull(x + 1, y - 1) and not glass(x, y) and not engine(x, y) \
+				and posmod(c.x, 4) == 0 and posmod(c.y, 3) == 0 and absf(y - 0.8) > 1.4:
 			return 5
 		return 0)
 	app.project.tiling_for(rivets)
@@ -345,11 +356,25 @@ func build() -> void:
 
 	# Draw order: direction layers are not drawn; keep them at the top of the list.
 	# No vignette: Palette Lock would snap its gradient into a visible ring.
-	p.display = {"bloom_on": true, "bloom_threshold": 0.7, "bloom_radius": 6.0, "bloom_intensity": 0.55,
-		"chroma_on": true, "chroma": 0.6}
-	p.palette_lock = {"enabled": true, "dither": true, "strength": 0.3}
+	# Bloom only on the brightest things (stars, flame core); no chromatic
+	# aberration or lock dither, which scattered off-palette speckle.
+	p.display = {"bloom_on": true, "bloom_threshold": 0.85, "bloom_radius": 6.0, "bloom_intensity": 0.5}
+	p.palette_lock = {"enabled": true, "dither": false, "strength": 0.0}
 	for l in p.layers:
 		LayerData.normalize_settings(l.settings)
+
+
+## 4x4 ordered-dither threshold in [0,1).
+func ph_bayer(c: Vector2i) -> float:
+	var m := [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+	return (m[(c.y & 3) * 4 + (c.x & 3)] + 0.5) / 16.0
+
+
+## Earth-relative coordinates: arc length along the horizon and altitude,
+## so surface features curve with the planet.
+func earth_uv(u: Vector2) -> Vector2:
+	var r := u - EARTH_C
+	return Vector2(atan2(r.x, -r.y) * EARTH_R, r.length() - EARTH_R)
 
 
 func _slot(over: Dictionary) -> Dictionary:
