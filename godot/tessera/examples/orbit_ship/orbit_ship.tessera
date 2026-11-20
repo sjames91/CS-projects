@@ -18,14 +18,12 @@
 		]
 	},
 	"display": {
-		"bloom_intensity": 0.75,
+		"bloom_intensity": 0.55,
 		"bloom_on": true,
-		"bloom_radius": 7,
-		"bloom_threshold": 0.55,
+		"bloom_radius": 6,
+		"bloom_threshold": 0.7,
 		"chroma": 0.6,
-		"chroma_on": true,
-		"vig_on": true,
-		"vignette": 0.35
+		"chroma_on": true
 	},
 	"format_version": 3,
 	"layers": [

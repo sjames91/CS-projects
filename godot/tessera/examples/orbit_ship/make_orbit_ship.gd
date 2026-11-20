@@ -17,7 +17,7 @@ extends Node
 ##   Rivets           square with half-both Offset, small dots
 ##   Glass            hex, colour-aware rounding (smooth canopy)
 ##   Nav lights       LED dots, blinking per frame
-## Display stack: bloom + vignette + slight chromatic aberration.
+## Display stack: bloom + slight chromatic aberration.
 
 const CS := 6
 const W := 112
@@ -344,8 +344,9 @@ func build() -> void:
 	clouds.settings["flow_layer"] = jet.id
 
 	# Draw order: direction layers are not drawn; keep them at the top of the list.
-	p.display = {"bloom_on": true, "bloom_threshold": 0.55, "bloom_radius": 7.0, "bloom_intensity": 0.75,
-		"vig_on": true, "vignette": 0.35, "chroma_on": true, "chroma": 0.6}
+	# No vignette: Palette Lock would snap its gradient into a visible ring.
+	p.display = {"bloom_on": true, "bloom_threshold": 0.7, "bloom_radius": 6.0, "bloom_intensity": 0.55,
+		"chroma_on": true, "chroma": 0.6}
 	p.palette_lock = {"enabled": true, "dither": true, "strength": 0.3}
 	for l in p.layers:
 		LayerData.normalize_settings(l.settings)
