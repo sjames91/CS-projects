@@ -11,3 +11,4 @@ Games and game engines I've written while learning.
 
 - [`love2d/`](love2d) has games made with LÖVE in Lua, including the earlier Lua version of the engine.
 - [`javascript/`](javascript) has JavaScript projects.
+- [`godot/`](godot) has Godot projects, including [Tessera](godot/tessera), a layered cell-based pixel art editor.
