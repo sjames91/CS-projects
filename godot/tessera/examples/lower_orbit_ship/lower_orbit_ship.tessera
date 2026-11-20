@@ -1,0 +1,1435 @@
+{
+	"animation": {
+		"durations": [
+			110,
+			110,
+			110,
+			110
+		],
+		"fps": 9,
+		"frame_count": 4
+	},
+	"app": "tessera",
+	"canvas": {
+		"cell_size": 6,
+		"cells": [
+			112,
+			64
+		]
+	},
+	"display": {
+		"bloom_intensity": 0.45,
+		"bloom_on": true,
+		"bloom_radius": 6,
+		"bloom_threshold": 0.85
+	},
+	"format_version": 3,
+	"layers": [
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGwUEAHABAQIBAQECAgIBAQECATMgsAIioeNythRe6HoFpwABWwOQTlBqAj0YPrswUKA5oJyDfwLwDBEXDATcDdAsIAkQA+sdOG2A3uVEvQOsSYjyAisYxG7gQlqICpjzYFlDC0xCdBTMSe7ionwBNw6MX7BjgRkvAIwFYfkK5NH91XMs"
+				}
+			],
+			"id": 1,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Space",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG7UHAPIEBoYQAAIw1ZRk0ttPUgn+DE1lpc3TtE9EgICmqDB9oJOCgqQDEsAwIAKGQlCIQTCKwRgEYhAGQxiGYQgSKmYMY4ydmGtz9FuJj1NqO2qi9vLIz5pFfBKb2AwfHpTEvON6bjJjCyeAgfFiqNf7ytUWnpPxFLVdEgGmG1jYEA5QUUBoVcfBWpT1stTLieAchOA2KbeNNAe/qnuKdNbvXf+8J/ViGWZS9aRy406+bnzxtaOCQbfxHJw2qG8eHfwIYzKzaMCRnKquiF135WaNxD5R480Jr3ypAowgIXl2cHg2xnCBEUgAcSPu0b97RAwlJzmF1HY3BQ=="
+				}
+			],
+			"id": 2,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Stars",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.5,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 3
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG5UHAHJEBoUQEgIW40i5REUek6xMK1Ue+fv8rcYPDARyqGBPMowBYAIyQ2gdEuAzKQQGn2lJUUk59SoMewbUDKKpuHun0q1sWWU3hZEEYVmZBwgMCQO9DZQqg7L3qbOSKk4lc07yxgs4OztNrgrbGhXT/wbrkCOx2b4mIKTKlJq4/r3orfecNxcr2THO0C58zSJsGvZgcMtCo/uL+SjgVtEGkmNb73C4hvlNFLcRF19/AYR2oH+wwlPccLQhRsWsVrNIzI/K2NxaB6wH6PGcGAsI0Nz3EHBo+JOIzz8Uy5s/NBoDO/kfIYuE91GRXVv7wkjga4EW"
+				}
+			],
+			"id": 3,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Planet",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [
+					{
+						"angle": 45,
+						"colors": [
+							5,
+							3
+						],
+						"contrast": 1,
+						"drives": 64,
+						"feed": 0.03,
+						"fine": false,
+						"fine_amount": 0.5,
+						"gap": [
+							0,
+							0.6
+						],
+						"iterations": 2000,
+						"jitter": [
+							0,
+							1
+						],
+						"kill": 0.062,
+						"mode": 0,
+						"octaves": 4,
+						"rotation": [
+							0,
+							1
+						],
+						"rounding": [
+							0,
+							1
+						],
+						"scale": 3,
+						"seed": 1,
+						"shift": [
+							-1,
+							1
+						],
+						"size": [
+							0.3,
+							1
+						],
+						"source": 3,
+						"style_count": 2,
+						"styles": [
+							0,
+							1,
+							2
+						],
+						"turbulence": 0.5,
+						"visibility": 0.4
+					}
+				],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "voronoi",
+			"tiling_params": {
+				"jitter": 0.75,
+				"seed": 9
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIDUDAEQCAAAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcAJiDwdQ5rQEH5JmAuEDhvZSHFOmGB6JxlJtfFsFbyXEyRCGcZJpc3sETc42Gu1BzMFoGvJ0OkO4QRKuIV3D5jAQ=="
+				}
+			],
+			"id": 4,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Atmosphere",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 1,
+				"rounding_color_aware": true,
+				"rounding_inner": true,
+				"rounding_on": true,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "hex",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIHUJALQCAAABAAEBAQMAAQMDAQMDAgICAgECAgIBAAEBAAABAQICAQEBAQEBAwEBAnOokDsHoAKJ5obWDRIAkhTDIAiEIAzCIAT/70CsRCBeB5DggDaVerSLdZqc0XzS3A/tgqOTcrRyynK1NhdH4U58K/O9vRoEomTuuIwZ279NwIBGVJkbbPh9WdByKKtqtomnvZADQ/brHOA2H40u7DQBRTG1E/xjrSsw+au4yd8k4RGAxI17PP458BOr77L/xgY4tUZUJ29seZxrMlOfT4AOMV9AR8qmiZIj3p2agditNJcTdcmMyl5nr8MWFw0qTl8a5lz1/G0vbNUFGsCFN5uGBI+K7hrY7FIRnQBLAUPKSVpWvspWg+bpZOnN17QFwbnB1apJvUvpjuRLPKI8B0cC"
+				}
+			],
+			"id": 5,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Asteroids",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.7,
+				"rounding_color_aware": true,
+				"rounding_inner": true,
+				"rounding_on": true,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "hex",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGyUEALAAAAkACgoKCQkKCgkKCQkKCgkKCQoKKSAwA4lkahsf/RBBCtgsvSVlWiqHQ1KmRcmmKNh8oAsg/ATdgHOpwUd6whD6YXRRAizAGz+FYP50f2uxpluBAa1OCWUFLAV4AHqlZySLVbDHqRujIhvUqXfSEIICLRgFHgpA6TLYFJNSeFz1sA=="
+				}
+			],
+			"id": 6,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Ore",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.75,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 1
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG00DAJQCAAAFBQUFAAUABwAFAAUABwAFAAUABwAFAAUABwAFAAUABwAFAAUABwAkEADq/TKfTmwWnW5mO0l3PLFOerqD+STH+cQO+XkGA0niC4lpItJpbCRxjyTmCknnspJEOJOYIE6qJe1jAQ=="
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG00DAJQCAAAFBQUFAAcABQAFAAcABQAFAAcABQAFAAcABQAFAAcABQAFAAcABQAkEADq/TKfTmwWnW5mO0l3PLFOerqD+STH+cQO+XkGA0niC4lpItJpbCRxjyTmCknnspJEOJOYIE6qJe1jAQ=="
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG00DAJQCAAAHBwcHAAcABQAHAAcABQAHAAcABQAHAAcABQAHAAcABQAHAAcABQAkEADq/TKfTmwWnW5mO0l3PLFOerqD+STH+cQO+XkGA0niC4lpItJpbCRxjyTmCknnspJEOJOYIE6qJe1jAQ=="
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG00DAJQCAAAHBwcHAAUABwAHAAUABwAHAAUABwAHAAUABwAHAAUABwAHAAUABwAkEADq/TKfTmwWnW5mO0l3PLFOerqD+STH+cQO+XkGA0niC4lpItJpbCRxjyTmCknnspJEOJOYIE6qJe1jAQ=="
+				}
+			],
+			"id": 7,
+			"is_static": false,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Tractor beam",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIC0CAFgAAAoKCgAJCAAJABEAdIIfokCFR4f0HDc5jbZfpMDNUeC8ySm0/iIFt1ikQJWr0OZIodUhvQuk0yCFNocUKJAS5ugBFg=="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIH0CAHAAAAoACgoJCQgACQkICRQA5YIfwkCBo0MKj5ucgusmp8BAeg6koSAFR4cUHn+RQusvUqDKVXBlS8GiQzoSSImBFBak9+iQsgXStg49aAM="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIC0CAFgAAAoKCgAJCAAJABEAVoMfokCFR4f0HDc5jbZfpMDNUeC8ySm0/iIFt1ikQJWr0OZIodUhvQuk0yCFNocUKJASdegBFg=="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIG0CAHAAAAoACgoJCQgACQkIABMAq8h9cHSk58omDddNTsHpFyk0kIKCFBwdUnj8RQqtv0iBKlfBlS0Fiw7pSCAlBlJYkN6jQ8oWSFsC9KAN"
+				}
+			],
+			"id": 8,
+			"is_static": false,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Ore chunks",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.9,
+				"rounding_color_aware": true,
+				"rounding_inner": true,
+				"rounding_on": true,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "hex",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 4,
+			"frames": [
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIJ0BAIAAAAUGBgYABAQEBQUFAgQFCwBCBHowIAEIQB2vRHwNR0cKp2wJ4nBvoUNaCki1jHyABQ=="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIAUCAJAAAAYGBgAEBAQFBQUCBgUAAAAQAMgDelAgAcTglE0a0MBYbTo8iAADMEyoYyFsFgw60sGhsUGHFBKQ5hn5AAs="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIHUBAHAAAAYABAQEBQUGAgYABQoAr9SGHg4ksIMGCeTBygwdSeLAbqFDWgxIcY18gAU="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbINUBAHgAAAUFBgYABAQEBQYCBQYPAD8EPSSySQAwIKuVABeg0JFAbBRACw0G4A3hILAAKeiwkgJSHSMfYAE="
+				}
+			],
+			"id": 9,
+			"is_static": false,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Exhaust",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 1,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 17,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": true,
+				"flow_strength": 0.9,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": true,
+				"jitter_pos": 0.35,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.25,
+				"jitter_source": 1,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 5
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "hex",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG2UGAFJECIk0QxIREeMLeRBSlLq5KbFvQAjO7T3feVbqADCoYaRGCkaoMI2SSmuAAiOB5FgHEkCxKRBDMYKG4IYwQ2CUEhiBERphh8XNDWYtjSuyizYLR7p0lPcG+LKZlTz3nkFT+ADO/tfocqzyOwaPdOc1Mu08rI+7p8ry2BaaYRvjNLF+VM9hmVHDDBghvlMe/SzCCJmlS1qhATavNjlYMC9t7BwfNQkBlSn+4XjWGpEF5v0H4ViAmS+m14DiijnpdQqTYlR7uI9LgEUDKA=="
+				}
+			],
+			"id": 10,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Hull",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.04,
+				"gap_on": true,
+				"grout_color": "#2b1d52",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbICUBAGAAAAYABgAFAAUABQALEAAM2AW+kZgmIh3MRhLtSGKYyPnHAg=="
+				}
+			],
+			"id": 11,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Glass",
+			"opacity": 0.9,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.9,
+				"rounding_color_aware": true,
+				"rounding_inner": true,
+				"rounding_on": true,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "hex",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGw0BAIgAAAQACQkACQEJAQAICQkIAAUQAFjUa5TqlI6VYiZ/LA=="
+				}
+			],
+			"id": 12,
+			"is_static": true,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Pilot",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGw0BAEAAAAQACQIHAAgAjwY+7AQBUPAJ8API5S5mHlQNnh+0AQ=="
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGwUBAFAAAAkKAAIAAgcHBgA1Aj60Af4DC3tiHfC/nCC24QMs"
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGz0BAGAAAAQACQoACgACBwcIAFMGPgBM94aaEUhtefuiNNcy86Bq8PygDQ=="
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGwUBAFAAAAkKAAoABAcHBgA1Aj60Af4DC3tiHfC/nCC24QMs"
+				}
+			],
+			"id": 13,
+			"is_static": false,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Lights",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.85,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 1
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 4,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG20BAEgAAAQEAAAABAYMANcAekiAwouDo+UA55gADh8UmABXXykGznjZABClLT7AAg=="
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGy0BAEAAAAQGAAYABAsAIQF6AB0AcQYmBmohMB2oecBkLz0Acd/iAyw="
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG0UBACAAAAQGDADLkPdQpjYB0r6Ac0wAhw8KTICrrxQDJ14auEQA7m2LD7A="
+				},
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAGz0BACAAAAQGDADLkPfQpjYFnGMCOHxQYAJcfaUYOOMlAVhYIQDBbYsPsA=="
+				}
+			],
+			"id": 14,
+			"is_static": false,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Laser",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 4,
+			"frames": [
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIIUBAGgAAAoAAAYACgAGBgoKCwAWA3rgAgoWSKghK1B1SFFBRvJa7wtUWHRIRwKpPpAPsA=="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbICUCAIgAAAYKAAAGAAYACgAAAAoKABEA3pDroYH0IEgjgQRAgAVScBpFChZINYGUow2R2gJpPJDeBdJpkJ6jQxoWSAeCfIAF"
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIK0BAHAAAAoKAAAAAAYABgYKCgwAo5L30OhIAVqtFBJIj4HENoRgFUjHgpSYHCkwOqSAgXTkyQdY"
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIJ0BAHgAAAoKAAYKBgAGBgoGCgALAKACvbQ5UnBZKw+sIYF0KEjHTa0UukABZ4cUL5AOPPkACw=="
+				}
+			],
+			"id": 15,
+			"is_static": false,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Sparks",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": true,
+				"jitter_pos": 0.3,
+				"jitter_rot": 0.5,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 5
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "hex",
+			"tiling_params": {
+
+			},
+			"visible": true
+		},
+		{
+			"blend_mode": 2,
+			"frames": [
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIJ0FAJAAAAcABwAHAAcAAAAHBwcHBwdOqKBvEAMJxEwaAxLAEEAIGAIGYiAChmCHIYgwAoxgjuMwDOVhimiIiwFR1oAFupHllp7Khh436KdKhYryEoG/IYlN+BrOjzwio9Dcsyps55KjdGMw3Vy80bjqKNc/MTObNzZXd+xIa1N4cowN77Onl4dqa1HYR+PG/EU4RfhXHFso4MsYVaPtTf7TrMoX3P3OBY3DADwzGNseuX1k9IGn"
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbID0GAKAAAAcHBwcABwcABwcHAAcHBwcHB1SooG0NEIMJhEozBhKAQAgaCGQIGAKGIGIIGIIbAgliII5hIBrEWWraYjEDhoKBf3EsXvkmseB1gXkHC4d1lTnDk1PYgyIsVYgPHJMlEdoeQ3eQsY68c6UuC6PT8bKetWKgocMOEPDMSMxaqzIjccdXcpu7C4BoO4ZJr72mG20xCDVDDni00LkazoCKSDWGC6VXL3KtTHsmSS6xTIxZniSKhGSoFDX5hElAsSohVinnAcs="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIIUGAKAAAAcHBwcABwAHBwcHBwAHAAcHB16osGsNIAMRqS6MARKgIAgQhIIRQAgEEUQECQIRYBBFgBBgCAJREIRRLkdFUo0BCW7MUx1m0pb+qvuz6JjJQ1ztpDNIVUSXjgPlLH/iwIyJs7PEt/0I1qU38AUK9vloFclSDJSmj8ZLh2oAiRpurKE6fEAgQoo459IHSGpYZEPuOn/G+atSeo24Aq56DSk/gSUHvJhK8/PuTNM/TgjJbJvsq+WIWUs6heolNm1Apt53JSHrwnaxSzm1VAY="
+				},
+				{
+					"size": 8475,
+					"zstd": "KLUv/WAbIPUFAJgAAAcHBwcABwAHBwcAAAAHBwAHUKigbQ3wAhGho+ESaBBgQBgOwzAEQwzBDcEQRNBwDEGPEil4ulgM+dU2oH7lqoI1hIudBVBfsscf3OFGYblBH3KeeuSw3TgPKf+QXmVmuMNd/IEMNsVOOAUxm6U26ZkOI5KUKckiXnSLGcJrXcxtA2wbbANh7nStesnDEIhrZpIEbTAZPtv+Nx6bVyWf5e7D/E2h1/8VIO411ANvYgtNJ4u52SKCnXLSngw="
+				}
+			],
+			"id": 16,
+			"is_static": false,
+			"kind": "pixel",
+			"locked": false,
+			"name": "Shield",
+			"opacity": 0.7,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.6,
+				"rounding_color_aware": true,
+				"rounding_inner": false,
+				"rounding_on": true,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[]
+			],
+			"tiling_id": "hex",
+			"tiling_params": {
+
+			},
+			"visible": false
+		},
+		{
+			"blend_mode": 0,
+			"frames": [
+				{
+					"size": 7168,
+					"zstd": "KLUv/WAAG00AABAAAAEA+9sDLA=="
+				}
+			],
+			"id": 17,
+			"is_static": true,
+			"kind": "direction",
+			"locked": false,
+			"name": "Exhaust flow",
+			"opacity": 1,
+			"settings": {
+				"beam_amount": 0.6,
+				"beam_on": false,
+				"bleed": 0.5,
+				"bleed_on": false,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
+				"dir": {
+					"field_display": 1,
+					"smoothing": 1.5
+				},
+				"dot_size": 0.8,
+				"flow_animate": false,
+				"flow_cell_rot": false,
+				"flow_layer": 0,
+				"flow_patterns": false,
+				"flow_rd": false,
+				"flow_speed": 1,
+				"flow_stamp_rot": false,
+				"flow_strength": 1,
+				"gap": 0.15,
+				"gap_on": false,
+				"grout_color": "#1a1a1f",
+				"grout_on": true,
+				"jitter_on": false,
+				"jitter_pos": 0.25,
+				"jitter_rot": 0.2,
+				"jitter_seed": 1,
+				"jitter_size": 0.2,
+				"jitter_source": 0,
+				"mask_on": false,
+				"mask_size": 1,
+				"mask_strength": 0.5,
+				"mask_type": 0,
+				"offset_amount": 0.5,
+				"offset_mode": 0,
+				"patterns": [],
+				"rounding": 0.4,
+				"rounding_color_aware": false,
+				"rounding_inner": false,
+				"rounding_on": false,
+				"scan_dark": 0.5,
+				"scan_on": false,
+				"scan_spacing": 3,
+				"scan_thickness": 0.4,
+				"stamp_shape": "",
+				"stamp_thickness": 0.3,
+				"style": 0
+			},
+			"solo": false,
+			"stroke_frames": [
+				[
+					{
+						"kind": "arrow",
+						"points": [
+							117,
+							132,
+							9,
+							132
+						],
+						"radius": 48,
+						"strength": 1,
+						"type": "path"
+					},
+					{
+						"kind": "field",
+						"points": [
+							87,
+							132,
+							105,
+							132
+						],
+						"radius": 24,
+						"strength": 0.35,
+						"type": "radial_out"
+					}
+				]
+			],
+			"tiling_id": "square",
+			"tiling_params": {
+
+			},
+			"visible": true
+		}
+	],
+	"next_layer_id": 18,
+	"palette": [
+		"0a0726ff",
+		"442d7dff",
+		"8245a9ff",
+		"cd407fff",
+		"e89cc3ff",
+		"f0c5f1ff",
+		"6acce8ff",
+		"2f833fff",
+		"3ba353ff",
+		"c8993eff"
+	],
+	"palette_lock": {
+		"dither": false,
+		"enabled": true,
+		"strength": 0
+	},
+	"shapes": []
+}
