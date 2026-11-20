@@ -23,6 +23,8 @@ var _live := {}                # lid -> {vp, world, rect, mat}
 var _passes: Array = []        # intermediate SubViewports
 var _rebuild_pending := false
 var _blank: ImageTexture
+var _pre: SubViewport  # composite before the Display stack
+var display_frame := -1.0  # animated display effects; <0 = follow App.frame
 
 
 func _init() -> void:
@@ -77,6 +79,9 @@ func set_view(zoom: float, pan: Vector2) -> void:
 		_apply_transform(_live[lid].world)
 	for p in _passes:
 		_apply_transform(p.get_child(0))
+	if _pre:
+		_apply_transform(_pre.get_child(0))
+	_update_display_view()
 
 
 func _apply_transform(n: Node2D) -> void:
@@ -200,7 +205,26 @@ func rebuild() -> void:
 		add_child(vp)
 		_passes.append(vp)
 		entries.push_front({"tex": vp.get_texture(), "space": 1, "opacity": 1.0, "mode": 0, "tint": Color.WHITE})
-	world.add_child(_compositor(entries, r))
+	var use_display := not raw_only and DisplayStack.any_on(App.project)
+	if use_display:
+		if _pre == null:
+			_pre = SubViewport.new()
+			_pre.transparent_bg = true
+			_pre.disable_3d = true
+			_pre.add_child(Node2D.new())
+			add_child(_pre)
+		_pre.size = size
+		var pw: Node2D = _pre.get_child(0)
+		for c in pw.get_children():
+			c.queue_free()
+		_apply_transform(pw)
+		pw.add_child(_compositor(entries, r))
+		world.add_child(_display_rect(r))
+	else:
+		if _pre:
+			_pre.queue_free()
+			_pre = null
+		world.add_child(_compositor(entries, r))
 	if show_overlay:
 		_add_overlay(r)
 
@@ -261,3 +285,35 @@ func _add_overlay(r: Rect2) -> void:
 	rect.size = r.size
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	world.add_child(rect)
+
+
+var _display_mat: ShaderMaterial
+
+
+func _display_rect(r: Rect2) -> ColorRect:
+	_display_mat = ShaderMaterial.new()
+	_display_mat.shader = DisplayStack.shader()
+	var d := DisplayStack.settings(App.project)
+	for k in d:
+		_display_mat.set_shader_parameter(k, d[k])
+	_display_mat.set_shader_parameter("pre_tex", _pre.get_texture())
+	_display_mat.set_shader_parameter("canvas_px", App.project.canvas_px())
+	_display_mat.set_shader_parameter("node_origin", r.position)
+	_display_mat.set_shader_parameter("node_size", r.size)
+	_display_mat.set_shader_parameter("tile_mode", tile_mode)
+	_update_display_view()
+	var rect := ColorRect.new()
+	rect.material = _display_mat
+	rect.position = r.position
+	rect.size = r.size
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rect
+
+
+func _update_display_view() -> void:
+	if _display_mat == null:
+		return
+	_display_mat.set_shader_parameter("view_size", Vector2(size))
+	_display_mat.set_shader_parameter("zoom", _zoom)
+	_display_mat.set_shader_parameter("pan", _pan)
+	_display_mat.set_shader_parameter("frame", display_frame if display_frame >= 0.0 else float(App.anim_tick))

@@ -198,8 +198,16 @@ func toggle_play() -> void:
 
 
 func _process(dt: float) -> void:
-	if not playing or App.project.frame_count <= 1:
+	if not playing:
 		return
+	if App.project.frame_count <= 1:
+		_acc += dt * 1000.0
+		if _acc >= App.project.frame_duration_ms(0):
+			_acc = 0.0
+			App.anim_tick += 1
+			App.frame_changed.emit()
+		return
+	App.anim_tick += 0
 	_acc += dt * 1000.0
 	var dur := App.project.frame_duration_ms(App.frame)
 	if _acc < dur:
@@ -217,4 +225,5 @@ func _process(dt: float) -> void:
 		if f >= n:
 			toggle_play()
 			return
+	App.anim_tick += 1
 	App.set_frame(clampi(f, 0, n - 1))

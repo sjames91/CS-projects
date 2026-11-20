@@ -71,6 +71,7 @@ func _ready() -> void:
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tabs.add_child(LayersPanel.new())
 	tabs.add_child(LayerSettingsPanel.new())
+	tabs.add_child(DisplayPanel.new())
 	lower.add_child(tabs)
 	timeline = TimelinePanel.new()
 	timeline.onion_changed.connect(canvas.set_onion)
@@ -487,6 +488,7 @@ func render_frame_image(frame: int, scale: int) -> Image:
 	var cv := CompositeView.new()
 	cv.texture_override = textures
 	cv.frame_override = frame
+	cv.display_frame = float(frame)
 	cv.size = out_size
 	cv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(cv)

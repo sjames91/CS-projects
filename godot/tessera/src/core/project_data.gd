@@ -10,6 +10,7 @@ var frame_count: int = 1
 var frame_durations: PackedInt32Array = PackedInt32Array([0])  # ms, 0 = use fps
 var fps: int = 12
 var palette_lock: Dictionary = {"enabled": false, "dither": false, "strength": 0.5}
+var display: Dictionary = {}  # DisplayStack settings (global)
 var next_layer_id: int = 1
 
 
@@ -101,7 +102,7 @@ func capture_state(frames_for: Array = []) -> Dictionary:
 	return {
 		"canvas_cells": canvas_cells, "cell_size": cell_size, "palette": palette.duplicate(),
 		"frame_count": frame_count, "frame_durations": frame_durations.duplicate(), "fps": fps,
-		"palette_lock": palette_lock.duplicate(), "next_layer_id": next_layer_id, "layers": ls,
+		"palette_lock": palette_lock.duplicate(), "display": display.duplicate(), "next_layer_id": next_layer_id, "layers": ls,
 	}
 
 
@@ -113,6 +114,7 @@ func restore_state(s: Dictionary) -> void:
 	frame_durations = s.frame_durations.duplicate()
 	fps = s.fps
 	palette_lock = s.palette_lock.duplicate()
+	display = s.get("display", {}).duplicate()
 	next_layer_id = s.next_layer_id
 	var ls: Array[LayerData] = []
 	for e in s.layers:

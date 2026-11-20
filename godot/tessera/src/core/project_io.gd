@@ -38,6 +38,7 @@ static func to_dict(p: ProjectData) -> Dictionary:
 		"canvas": {"cells": [p.canvas_cells.x, p.canvas_cells.y], "cell_size": p.cell_size},
 		"palette": pal,
 		"palette_lock": p.palette_lock,
+		"display": p.display,
 		"animation": {"frame_count": p.frame_count, "fps": p.fps, "durations": Array(p.frame_durations)},
 		"next_layer_id": p.next_layer_id,
 		"layers": ls,
@@ -68,6 +69,7 @@ static func from_dict(src: Dictionary) -> Dictionary:
 	var lock: Dictionary = p.palette_lock.duplicate()
 	lock.merge(d.get("palette_lock", {}), true)
 	p.palette_lock = lock
+	p.display = d.get("display", {})
 	var anim: Dictionary = d.get("animation", {})
 	p.frame_count = max(int(anim.get("frame_count", 1)), 1)
 	p.fps = int(anim.get("fps", 12))

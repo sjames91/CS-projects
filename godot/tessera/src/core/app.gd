@@ -44,6 +44,9 @@ var selection_layer_id := -1
 var clipboard := {}
 var hover_canvas_point := Vector2(-1e9, -1e9)
 var max_cache_px := 2048
+## Advances on every playback step (even with one frame) so animated
+## effects (interlace, noise, drift) move while playing.
+var anim_tick := 0
 
 
 func _ready() -> void:

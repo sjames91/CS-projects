@@ -58,3 +58,15 @@ func offset() -> void:
 	var tc := ToolController.new()
 	tc.press(Vector2(270, 270), false, {})
 	tc.release(Vector2(270, 270), {})
+
+
+func display() -> void:
+	var bg: LayerData = app.active_layer()
+	fill_layer(bg, func(c, p): return [16, 17, 18, 19, 6, 9, 10][int(p.x / 74) % 7] if p.y < 380 else (2 if (c.x / 4 + c.y / 4) % 2 == 0 else 6))
+	app.perform("p", func():
+		var d := DisplayStack.DEFAULTS.duplicate()
+		d.merge(DisplayStack.PRESETS["Consumer TV"].display, true)
+		app.project.display = d
+		for k in DisplayStack.PRESETS["Consumer TV"].crt:
+			bg.settings[k] = DisplayStack.PRESETS["Consumer TV"].crt[k])
+	app.set_view("preview_lock", false)
