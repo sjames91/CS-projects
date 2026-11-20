@@ -1,3 +1,4 @@
 .godot/
 *.import
-export/
+# Godot build output at the project root (not src/export)
+/export/

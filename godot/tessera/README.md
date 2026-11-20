@@ -117,6 +117,15 @@ H / Shift+H flip · R / Shift+R rotate · Ctrl+Z / Ctrl+Shift+Z undo/redo ·
 Ctrl+C/X/V · Delete · Ctrl+A / Ctrl+D · P preview · Shift+P palette-lock
 preview · Enter play · , . step frames · F1 all shortcuts.
 
+## Examples
+
+Each builds a project with the editor's own code and exports it:
+
+```
+godot --path . res://examples/orbit_ship/make_orbit_ship.tscn                 # shuttle over Earth
+godot --path . res://examples/lower_orbit_ship/make_lower_orbit_ship.tscn     # Lower Orbit mining ship + game sprite sheet
+```
+
 ## Tests
 
 Needs a Vulkan device (a software one such as lavapipe works):
