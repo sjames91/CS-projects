@@ -18,12 +18,10 @@
 		]
 	},
 	"display": {
-		"bloom_intensity": 0.55,
+		"bloom_intensity": 0.5,
 		"bloom_on": true,
 		"bloom_radius": 6,
-		"bloom_threshold": 0.7,
-		"chroma": 0.6,
-		"chroma_on": true
+		"bloom_threshold": 0.92
 	},
 	"format_version": 3,
 	"layers": [
@@ -32,7 +30,7 @@
 			"frames": [
 				{
 					"size": 7168,
-					"zstd": "KLUv/WAAG40AACABAQIDAxAA/PWF3//u+2MB"
+					"zstd": "KLUv/WAAG+UJACQDAQECAQEBAgECAgEBAgEBAgEBAgECAwMDAwMDAgMEAwMDBAQEAwQEBAQDAwQDAwQDAwOAiqhgVzrgAhIZ1RwSYEEshoY4jGEgBkEQBEEQAobAEBABESgBYYQhoig7o8aAaTv27JdLovEYCeSYKRyYFNfsNKOSgcdHooapwPYLhTAMRTP91y5fCoaVtmd7V4zNJBOZSt2mBpGxQFx4Nw4gGCU/iAF5SkeFlv13EZwkoBnlaD4zn8jY6xKSjweNgSLfjIGod3gK1mXkmGErxiM6oB6lCPIt82ZXVI9sBEJbQ89pDZO6VOF4kFB9AitEQaOcg1i0nZC1AXmuOMpoDU07AaEwoLRFFaIlvQSb8WpzyiFSIfcMAJ2dSrQWktNwIEY7qG4su8YRQbAgT3osJXY/pmR5rwyUbdqqpUg="
 				}
 			],
 			"id": 1,
@@ -46,8 +44,8 @@
 				"beam_on": false,
 				"bleed": 0.5,
 				"bleed_on": false,
-				"boundary_mode": 1,
-				"boundary_width": 1,
+				"boundary_mode": 0,
+				"boundary_width": 0.5,
 				"dir": {
 
 				},
@@ -248,7 +246,7 @@
 			"frames": [
 				{
 					"size": 7168,
-					"zstd": "KLUv/WAAG00OADKHCwjApQMJ5NVsAVX1q5sRHZF9l6h+lcdnKyb773hOAgkrSKlG/YiIDwCcA5BAAAKA3ahQTwqV1lCCMUNntgESYBQlB9USEc0EGQUl5ZRVKbRnh6WWMWjPt3p0PcOaWMDehQUyXNOvrXaYVkPCgLh23F5NI7shmLGkKiQYbhA/PXWr4yt7LA2Aw8Avr+JkD1IxRMV1kGrqKp2LzfdlIB3LIUsUmED69xjfmimJRq5h8RQq4+BaGMFQGzFx2POPVEvbdHzQkXogLqO3PlyS+09xP4syLPDbNUy+OHNkorErDsb/0RWCNzBWkebdK9qhTP6nrNTykfoCTdCsDmjZyIXNz7LzJ8bkmnLY+1seTKmJRkf2+KvB/MDNd726perEX2qPUAi+y6XSC9B4V2sdbOr0L4wsEPMSazxzZE2pcYPpSWIDN0idZZ8q9ujzY4gcoKBE18xpGuROVYiTnbskisAa6n1ClS+LlZHv1aRU+8Jmy3oYUbmE+lhfaw8fo3OK9R3tBmP3op7dU7Wie5ChhdJPaDeUajZf2A8SvdDDogNpgTjYLQN9FpzPW34awFxUZVWep5wKiPCXYLRdh4IkGAfUP3atSCJqARs="
+					"zstd": "KLUv/WAAG30OAMLHCwbAO4Flf0jnjzmazafOm82KU+9o2Rviu7kpdxv0T1ppNybxt8e/tG010m8BEgQEgOCoQG2SwrAGUIIxQ2bmARJANClEBRHVBCNhlFOQ8igV2jOlKCh32kMUTlXkBBdYyl8ScYILRkBmHHRL53RzNmbkoKmjL7Yjt4KI9BnpISwyPdgaDI3MLq72mJyIk3ZlUFTjIIoP8u392a/PSyDhx+ZiftrwvJDkmtoZi+y6i7xwXNVojJG7SLsONCglVZaxUh4NYYTTDvjNkk3aoK8ZWbW/lkwpTr/RmS7QlCElpWrCBsW9A5om/9CiH6MlnMCZKD/xlixOmJZ76bU2Kn5gpwlIUL89KJ5AQW0N4PeaFh63sPkV4QGtJZnLj2tARXtA2fHKUGYnIteObw68ICP1wvVcmDjTY0x+lL1OTlRXIA2rY900vKJ/9Odyp2s/2iPXTU0laPpF7cA7zr3M6YrG3p+iydqrwdv+AtohtYOuhXkLnNfQhLo1diRBt7Fd3XtcC9j5DScG89vtQIjMwxqgnROHYswT/7IFiiYmoSHB94e9fYvMsxy5KsPFlWkxo/6LZqFyhSbjcO9yoYEWTpiGgbqJ5cgdBO3QJaKW+wE="
 				}
 			],
 			"id": 4,
@@ -373,7 +371,7 @@
 			"frames": [
 				{
 					"size": 8475,
-					"zstd": "KLUv/WAbIM0KALQCAAAeHh4eAB4AAB4eAB4eAB4AHgAeHh4eAB4eAB4eHh4eHh4eHh4AHgAeHoC5qJBNY9CCEaqiDhKAoSiUqVkQVQ4hQyMigQSRghSlqJC2A5vO6AAAix0ey4pP4eZyET6eVicyUD+NF5aIX1QQWO/kdrPS1K2WdiAH0EterkwEvTD0WxuLtN8tN3kaeloY6gAq0u0VRpqvweymEISYSuVaaCMDUGIscjGaWSOkb8JmVR6YKMn+DB+rruCjbOpH29ZwI0bA2aV/p3fbeeSj/k4a3VEOe7h2sq/ex7e3WS70f8dm5oHcwB+wAWPR1eTgFCumyMCOxlKR+rKmxjfE0jBj/B2wfxD0PmEsKznkcbAJICjRD4rO5ZQUO2sn5Y5SIlry608igskgJmhjOAk+VW1TOgqcMd4ZFQIgFzY8NzqH8Be8/DUK5uAUy6RHlpyp9aHelk2bHrA1dw=="
+					"zstd": "KLUv/WAbIEULAGQCAAAeHgAAHh4eHh4eHh4eAAAeHh4AAB4eAB4eHh4AAAAeHh4eAB6Aw6iwaw2Qgpkq2zQGEiCRUIQLgtYxhkiERJSUJEUpFYY9A/luQlI+CvGAycbMKUunHtaFyPZG+HgpZ2KO32vw7wAlkSO0RJcgLwiyDzQQRBdQbuDXTAJ1vIXAbH0ClKFruC3rQ875vzjYZ8Sn6GkvqYejzpQda7+tD9mG78SJvECr5HL+gPARdsOkxp/ld8wNdO3onJxcSUw/kML4Jzzv+tY0Wu8CS4EKswt9zRjmC3dCChebYGb9uScIVfZzR9sdBDAz09ReJQSw5qtoWulj5X4007VHQIBex5ujVHrBUk7E1ikv5Sz0QVZT6vEgbLIYpPKxj83BPuFAiOyCw2ZKB5QpDJuwtJivw0a7VFEYQBhFEks9VKOpGWFWRhKemNCpO/5aWN1HTFnn/jpGAiwbE5mjYXQ+YurYDDhNfNgKMg=="
 				}
 			],
 			"id": 5,
@@ -494,7 +492,7 @@
 			"frames": [
 				{
 					"size": 8475,
-					"zstd": "KLUv/WAbIF0FAMQDAAAEAAQABAAEGwQABBsEAAQbABsEAAQbABsEAAQbABsEAAQbABsEAAQbABsEAAQbABsEGwAbBBsAABsbS6hw/NBDYTgSgECoMAmDEINhgiNAwozQCI3QCIwRGGYGJWs1hsHB0ducc8XS+0jXrtbhU+yEmxNf60k2BTTbg2NscFv2JO3FXIaEz+5ALhY4my3LmExgrIhxgbc72DTT+u4XjfA20d+JrlZMAQ=="
+					"zstd": "KLUv/WAbIOUDAHQCAAAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbMSDgleWCK2SgEmCAEkwYRiwTrB80F/SVE5jAcDvZkHEZoyn5bJbJo3PZFPcQMa6oK9ilFHcZLD4HZkjhbpNxknkyM4p8OllOsXQgtqiAd+N6jwU="
 				}
 			],
 			"id": 6,
@@ -539,9 +537,9 @@
 				"offset_amount": 0.5,
 				"offset_mode": 0,
 				"patterns": [],
-				"rounding": 0.6,
-				"rounding_color_aware": false,
-				"rounding_inner": false,
+				"rounding": 1,
+				"rounding_color_aware": true,
+				"rounding_inner": true,
 				"rounding_on": true,
 				"scan_dark": 0.5,
 				"scan_on": false,
@@ -678,9 +676,9 @@
 				"flow_speed": 1,
 				"flow_stamp_rot": false,
 				"flow_strength": 1,
-				"gap": 0.07,
+				"gap": 0.045,
 				"gap_on": true,
-				"grout_color": "#15171c",
+				"grout_color": "#3a3f4a",
 				"grout_on": true,
 				"jitter_on": false,
 				"jitter_pos": 0.25,
@@ -705,8 +703,8 @@
 						"contrast": 1,
 						"drives": 64,
 						"feed": 0.03,
-						"fine": true,
-						"fine_amount": 0.18,
+						"fine": false,
+						"fine_amount": 0.5,
 						"gap": [
 							0,
 							0.6
@@ -748,10 +746,10 @@
 						"visibility": 0.4
 					}
 				],
-				"rounding": 0.25,
+				"rounding": 0.4,
 				"rounding_color_aware": false,
 				"rounding_inner": false,
-				"rounding_on": true,
+				"rounding_on": false,
 				"scan_dark": 0.5,
 				"scan_on": false,
 				"scan_spacing": 3,
@@ -774,8 +772,8 @@
 			"blend_mode": 0,
 			"frames": [
 				{
-					"size": 7168,
-					"zstd": "KLUv/WAAGy0FAKQDAAAFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQAFBQAFBVSosPzglWEzEsA0BB3KEDAQSHAwwo3gCA8JGHKMUZsbTW3oOQQ1vRq8fapaiFWAyPSt0Alb4RDp+EaXMJg5IXtg2pQJaIaaC7OzgWQcSlVoNa8Qo7IyO+yicSrJSo1pHZaAf9QiD1pLAQ=="
+					"size": 7345,
+					"zstd": "KLUv/WCxG0UCADgAAAUFBQUAGABjAz7wABUADTCggtXiAKqSUIEppwDEB8BAACoADUYLAIiPA6ixAuC1XtgB6oFiwAZrQFktFZCAgp17z/oBFg=="
 				}
 			],
 			"id": 9,
@@ -783,7 +781,7 @@
 			"kind": "pixel",
 			"locked": false,
 			"name": "Rivets",
-			"opacity": 0.75,
+			"opacity": 0.45,
 			"settings": {
 				"beam_amount": 0.6,
 				"beam_on": false,
@@ -794,7 +792,7 @@
 				"dir": {
 
 				},
-				"dot_size": 0.22,
+				"dot_size": 0.16,
 				"flow_animate": false,
 				"flow_cell_rot": false,
 				"flow_layer": 0,
@@ -818,7 +816,7 @@
 				"mask_strength": 0.5,
 				"mask_type": 0,
 				"offset_amount": 0.5,
-				"offset_mode": 0,
+				"offset_mode": 3,
 				"patterns": [],
 				"rounding": 0.4,
 				"rounding_color_aware": false,
@@ -1265,9 +1263,9 @@
 		"3aff7aff"
 	],
 	"palette_lock": {
-		"dither": true,
+		"dither": false,
 		"enabled": true,
-		"strength": 0.3
+		"strength": 0
 	},
 	"shapes": [
 		{
