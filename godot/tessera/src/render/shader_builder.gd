@@ -135,6 +135,8 @@ uniform float beam_amount = 0.6;
 uniform bool bleed_on = false;
 uniform float bleed = 0.5;
 uniform int pal_count = 1;
+uniform sampler2D stamp_tex : filter_linear, repeat_disable;
+uniform bool stamp_on = false;
 uniform int pat_count = 0;
 uniform int pat_view = -1;
 uniform int pat_flags[4];
@@ -446,7 +448,7 @@ vec4 layer_color(vec2 p, float aa) {
 	if (rot_add != 0.0) { q = ctr + rot2(q - ctr, -rot_add); }
 	q = ctr + (q - ctr) / scl;
 	vec2 l = q - ctr;
-	if (stamp_rot != 0.0 && style >= 1 && style <= 5) { l = rot2(l, -stamp_rot); }
+	if (stamp_rot != 0.0 && ((style >= 1 && style <= 5) || style == 8)) { l = rot2(l, -stamp_rot); }
 	float tile_d = TL_sdf(q, c, ucs, utp, gap_px, rnd_px) * scl;
 	float shape_d = tile_d;
 	vec3 rgb = col.rgb;
@@ -499,6 +501,13 @@ vec4 layer_color(vec2 p, float aa) {
 		vec2 nrm = normalize(grad + vec2(1e-6));
 		float edge = smoothstep(-0.3 * inr, 0.0, shape_d);
 		rgb *= (0.92 + 0.16 * hc.x) * (1.0 + edge * dot(nrm, vec2(-0.7071, -0.7071)) * 0.45);
+	} else if (style == 8) {
+		// SVG stamp: library shape scaled to fit inside the tile.
+		float half_box = max(dot_size * body, 0.5);
+		vec2 suv = l / (2.0 * half_box) + 0.5;
+		float sd = stamp_on ? texture(stamp_tex, clamp(suv, vec2(0.0), vec2(1.0))).r * 2.0 * half_box : (length(l) - half_box);
+		if (any(lessThan(suv, vec2(0.0))) || any(greaterThan(suv, vec2(1.0)))) { sd = max(sd, 0.5); }
+		shape_d = sd * scl;
 	} else if (style == 7) {
 		float wcell = 2.0 * body;
 		float fx = clamp(l.x / max(wcell, 0.001) + 0.5, 0.0, 0.9999);

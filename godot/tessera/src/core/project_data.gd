@@ -11,6 +11,8 @@ var frame_durations: PackedInt32Array = PackedInt32Array([0])  # ms, 0 = use fps
 var fps: int = 12
 var palette_lock: Dictionary = {"enabled": false, "dither": false, "strength": 0.5}
 var display: Dictionary = {}  # DisplayStack settings (global)
+## Custom shapes used by this project (embedded so it opens anywhere): id -> shape
+var shapes: Dictionary = {}
 var next_layer_id: int = 1
 
 
@@ -102,7 +104,7 @@ func capture_state(frames_for: Array = []) -> Dictionary:
 	return {
 		"canvas_cells": canvas_cells, "cell_size": cell_size, "palette": palette.duplicate(),
 		"frame_count": frame_count, "frame_durations": frame_durations.duplicate(), "fps": fps,
-		"palette_lock": palette_lock.duplicate(), "display": display.duplicate(), "next_layer_id": next_layer_id, "layers": ls,
+		"palette_lock": palette_lock.duplicate(), "display": display.duplicate(), "shapes": ProjectData._copy_shapes(shapes), "next_layer_id": next_layer_id, "layers": ls,
 	}
 
 
@@ -115,6 +117,9 @@ func restore_state(s: Dictionary) -> void:
 	fps = s.fps
 	palette_lock = s.palette_lock.duplicate()
 	display = s.get("display", {}).duplicate()
+	shapes = ProjectData._copy_shapes(s.get("shapes", {}))
+	LayerData.shape_epoch += 1
+	register_shapes()
 	next_layer_id = s.next_layer_id
 	var ls: Array[LayerData] = []
 	for e in s.layers:
@@ -127,3 +132,21 @@ func restore_state(s: Dictionary) -> void:
 			l.frames = fr
 		ls.append(l)
 	layers = ls
+
+
+
+## Make every tiling shape available as a tiling ("shape:<id>").
+func register_shapes() -> void:
+	for id in shapes:
+		var sh: Dictionary = shapes[id]
+		if sh.kind == "tiling":
+			var cap := sh
+			TilingRegistry.register("shape:" + str(id), func(): return ShapeTiling.new(cap))
+
+
+
+static func _copy_shapes(src: Dictionary) -> Dictionary:
+	var out := {}
+	for id in src:
+		out[id] = Shape.duplicate_shape(src[id])
+	return out

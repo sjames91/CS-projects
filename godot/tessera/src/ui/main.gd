@@ -17,6 +17,7 @@ var _open_dialog: FileDialog
 var _save_dialog: FileDialog
 var _export_file: FileDialog
 var _export_win: AcceptDialog
+var _svg_out: FileDialog
 var _export_opts := {"scale": 1, "what": 0}
 var _canvas_win: ConfirmationDialog
 var _canvas_vals := {}
@@ -142,6 +143,7 @@ func _build_menu() -> MenuBar:
 		["Save As…", C | KEY_MASK_SHIFT | KEY_S, func(): _save_dialog.popup_centered_ratio(0.6)],
 		[],
 		["Export PNG…", C | KEY_E, func(): _export_win.popup_centered()],
+		["Export SVG (vector cells)…", 0, func(): _svg_out.popup_centered_ratio(0.6)],
 		[],
 		["Quit", C | KEY_Q, _request_quit],
 	])
@@ -180,6 +182,9 @@ func _build_menu() -> MenuBar:
 		["Fit canvas", C | KEY_0, func(): canvas.fit_view()],
 		["Zoom in", KEY_EQUAL, func(): canvas.zoom_at(canvas.size * 0.5, 1.25)],
 		["Zoom out", KEY_MINUS, func(): canvas.zoom_at(canvas.size * 0.5, 0.8)],
+	])
+	_menu(bar, "Shapes", [
+		["Shape Editor…", C | KEY_MASK_SHIFT | KEY_E, open_shape_editor],
 	])
 	_menu(bar, "Animation", [
 		["Play / pause", KEY_ENTER, func(): timeline.toggle_play()],
@@ -386,6 +391,18 @@ func _build_dialogs() -> void:
 	_quit_confirm.ok_button_text = "Quit without saving"
 	_quit_confirm.confirmed.connect(func(): get_tree().quit())
 	add_child(_quit_confirm)
+	_svg_out = FileDialog.new()
+	_svg_out.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	_svg_out.access = FileDialog.ACCESS_FILESYSTEM
+	_svg_out.filters = PackedStringArray(["*.svg ; SVG"])
+	_svg_out.title = "Export SVG — raster-only effects (CRT, fine textures, Display stack) are left out"
+	_svg_out.file_selected.connect(func(path):
+		if path.get_extension() == "":
+			path += ".svg"
+		var f := FileAccess.open(path, FileAccess.WRITE)
+		f.store_string(Svg.artwork_svg(App.project, App.frame))
+		App.status.emit("Exported " + path.get_file() + " (vector cells; raster effects omitted)"))
+	add_child(_svg_out)
 	_build_export_win()
 	_build_canvas_win()
 
@@ -623,3 +640,14 @@ func _show_help() -> void:
 		"Enter: play · , / .: step frames",
 	])
 	_alert("\n".join(lines))
+
+
+
+var _shape_editor: ShapeEditor
+
+
+func open_shape_editor() -> void:
+	if _shape_editor == null:
+		_shape_editor = ShapeEditor.new()
+		add_child(_shape_editor)
+	_shape_editor.popup_centered()

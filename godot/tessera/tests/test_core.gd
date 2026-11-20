@@ -15,6 +15,10 @@ func _ready() -> void:
 	var gpu = get_node("/root/Gpu")
 	var root := get_tree().root
 	var canvas := Vector2(160, 128)
+	for nm in Shape.BUILTINS:
+		var sh := Shape.builtin(nm)
+		sh.id = nm.to_lower().replace(" ", "_")
+		TilingRegistry.register("shape:" + sh.id, func(): return ShapeTiling.new(sh))
 	var variants: Array = []
 	for tid in TilingRegistry.ids():
 		variants.append([tid, 0])
@@ -53,7 +57,10 @@ func _ready() -> void:
 			if back[i] != cells[i]:
 				diff += 1
 		check(diff == 0, "%s: GPU identity resample matches (%d differ)" % [id, diff])
-		# layer shader compiles
+		# layer shader compiles (plain + one offset variant per tiling; every
+		# variant would compile ~100 large shaders on a software GPU)
+		if v[1] > 1:
+			continue
 		var sh := ShaderBuilder.layer_shader(t)
 		var rect := ColorRect.new()
 		var mat := ShaderMaterial.new()
@@ -116,6 +123,26 @@ func _ready() -> void:
 	var v2 := {"format_version": 2, "canvas": {"cells": [8, 8], "cell_size": 4}, "palette": [], "layers": [{"name": "d", "kind": "direction", "strokes": [[0, 0, 10, 10]], "frames": []}]}
 	var m2: Dictionary = ProjectIO.from_dict(v2)
 	check(m2.project.layers[0].strokes_at(0).size() == 1 and m2.project.layers[0].strokes_at(0)[0].points[1] == Vector2(10, 10), "v2 -> v3 stroke migration")
+	# SVG parsing: relative commands, H/V, quadratic, smooth cubic, arc, close.
+	var paths := Svg.parse_d("m10 10 h20 v20 q-10 10 -20 0 z M100 100 C110 90 130 90 140 100 S170 110 180 100 A20 20 0 0 1 220 100")
+	check(paths.size() == 2 and paths[0].closed and not paths[1].closed, "svg path subpaths / close (%d)" % paths.size())
+	check((paths[0].points.size() - 1) % 3 == 0 and (paths[1].points.size() - 1) % 3 == 0, "svg paths are cubic chains")
+	check(paths[1].points[paths[1].points.size() - 1].distance_to(Vector2(220, 100)) < 0.01, "svg arc ends at its endpoint")
+	var arc_mid: Vector2 = paths[1].points[paths[1].points.size() - 4]
+	check(absf(arc_mid.distance_to(Vector2(200, 100)) - 20.0) < 0.5, "svg arc stays on its circle")
+	var shp := Shape.builtin("Lizard interlock")
+	var re := Svg.parse_string(Svg.shape_svg(shp))
+	check(re.paths.size() == 1 and re.paths[0].closed, "shape -> svg -> geometry round trip")
+	var fitted := Svg.to_tiling(Svg.parse_string('<svg><circle cx="0" cy="0" r="10"/></svg>'), "hexagon", "c")
+	var ok_pair := true
+	for e in 3:
+		var a := Shape.edge_chain(fitted, e)
+		var b := Shape.edge_chain(fitted, e + 3)
+		var t := Shape.translation(fitted, e)
+		for k in a.size():
+			if a[k].distance_to(b[b.size() - 1 - k] - t) > 1e-4:
+				ok_pair = false
+	check(ok_pair, "imported SVG fitted to a tile keeps opposite edges paired")
 	var newer: Dictionary = ProjectIO.from_dict({"format_version": 99, "palette": [], "layers": []})
 	check(newer.warnings.size() == 1, "newer-version file warns instead of failing")
 	print("FAILURES: ", failures)

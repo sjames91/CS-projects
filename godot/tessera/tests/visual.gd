@@ -17,9 +17,13 @@ func _ready() -> void:
 	var name_ := OS.get_environment("SCENARIO")
 	await call(name_)
 	cv.fit_view()
+	if OS.get_environment("ZOOM") != "":
+		cv.zoom = float(OS.get_environment("ZOOM"))
+		var at := OS.get_environment("AT").split(",")
+		cv.center_on(Vector2(float(at[0]), float(at[1])))
 	for i in 24:
 		await get_tree().process_frame
-	get_viewport().get_texture().get_image().save_png(OS.get_environment("SHOT_DIR").path_join(name_ + ".png"))
+	get_viewport().get_texture().get_image().save_png(OS.get_environment("SHOT_DIR").path_join(name_ + OS.get_environment("SUFFIX") + ".png"))
 	get_tree().quit()
 
 
@@ -145,3 +149,33 @@ func direction() -> void:
 		bg.settings.flow_patterns = true
 		d.settings["dir"] = {"field_display": 1})
 	app.dir_selected = 2
+
+
+func shapes() -> void:
+	var puzzle := Shape.builtin("Puzzle piece")
+	var parsed := Svg.parse_file(ProjectSettings.globalize_path("res://tests/data/star.svg"))
+	var star := Svg.to_stamp(parsed, "star")
+	app.perform("shapes", func():
+		app.project.shapes[puzzle.id] = puzzle
+		app.project.shapes[star.id] = star
+		app.project.register_shapes())
+	var bg: LayerData = app.active_layer()
+	app.change_layer_tiling(bg, "shape:" + puzzle.id, {})
+	bg = app.active_layer()
+	fill_layer(bg, func(c, p): return [8, 9, 10, 13, 14][(c.x * 3 + c.y * 2) % 5] if p.x < 300 else 0)
+	app.perform("gap", func():
+		bg.settings.gap_on = true
+		bg.settings.gap = 0.08)
+	var st := new_layer("stars", func(l):
+		l.settings.style = LayerData.Style.SVG_STAMP
+		l.settings.stamp_shape = star.id
+		l.settings.dot_size = 0.95)
+	fill_layer(st, func(c, p): return 6 if p.x > 300 else 0)
+	main.open_shape_editor()
+	main._shape_editor._select(puzzle.id)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var w: Window = main._shape_editor
+	await RenderingServer.frame_post_draw
+	w.get_texture().get_image().save_png(OS.get_environment("SHOT_DIR").path_join("shape_editor.png"))
+	w.hide()

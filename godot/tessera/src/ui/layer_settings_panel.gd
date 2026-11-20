@@ -120,7 +120,7 @@ func _build() -> void:
 			func(): App.begin_change(),
 			func(): App.end_change("Tiling " + d.label)))
 	var info := UiKit.label("Rotation step %d°%s" % [int(t.rotation_step_deg()), " · staggered rows" if t.staggered_rows() else ""], true)
-	_box.add_child(info)
+	_box.add_child(UiKit.hbox([info, UiKit.button("Shape Editor…", _open_shapes)]))
 
 	# 2. Cell style
 	_section("2 · Cell style")
@@ -128,6 +128,21 @@ func _build() -> void:
 	var style := int(l.setting("style"))
 	if style != LayerData.Style.FLAT and style != LayerData.Style.MOSAIC:
 		_box.add_child(_slider("Size", "dot_size", 0.05, 1.0, 0.01))
+	if style == LayerData.Style.SVG_STAMP or _patterns_use_stamp(l):
+		var stamps: Array = [["None (circle)", ""]]
+		for id in App.project.shapes:
+			if App.project.shapes[id].kind == "stamp":
+				stamps.append([App.project.shapes[id].name, id])
+		var cur := 0
+		for i in stamps.size():
+			if stamps[i][1] == str(l.setting("stamp_shape")):
+				cur = i
+		var so := UiKit.option(stamps.map(func(e): return e[0]), cur, func(i):
+			App.begin_change()
+			_set_setting("stamp_shape", stamps[i][1])
+			App.end_change("SVG stamp shape"))
+		so.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_box.add_child(UiKit.hbox([UiKit.label("Stamp shape"), so, UiKit.button("Edit…", _open_shapes)]))
 	if style == LayerData.Style.CROSS_STITCH:
 		_box.add_child(_slider("Thread", "stamp_thickness", 0.05, 1.0, 0.01))
 
@@ -524,6 +539,9 @@ func _build_direction(l: LayerData) -> void:
 		App.end_change("Field display"))
 	disp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_box.add_child(UiKit.hbox([UiKit.label("Show field"), disp]))
+	_section("Import")
+	_box.add_child(UiKit.button("Import SVG paths as strokes…", func(): _svg_dialog().popup_centered_ratio(0.6),
+		"Each path becomes a curve; direction follows the path from start to end"))
 	_section("Direction presets")
 	var flow := HFlowContainer.new()
 	for pn in DirStroke.PRESETS:
@@ -535,3 +553,51 @@ func _build_direction(l: LayerData) -> void:
 				arr.append_array(DirStroke.preset(pname, App.project.canvas_px(), randi() % 1000)))
 			_queue(), "Replaces this frame's strokes"))
 	_box.add_child(flow)
+
+
+
+func _open_shapes() -> void:
+	var main := get_tree().root.get_node_or_null("Main")
+	if main and main.has_method("open_shape_editor"):
+		main.open_shape_editor()
+
+
+func _patterns_use_stamp(l: LayerData) -> bool:
+	for sl in Patterns.slots(l):
+		if (int(sl.drives) & Patterns.Drive.STYLE) != 0 and (sl.styles as Array).has(LayerData.Style.SVG_STAMP):
+			return true
+	return false
+
+
+
+var _svg_dlg: FileDialog
+
+
+func _svg_dialog() -> FileDialog:
+	if _svg_dlg == null:
+		_svg_dlg = FileDialog.new()
+		_svg_dlg.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+		_svg_dlg.access = FileDialog.ACCESS_FILESYSTEM
+		_svg_dlg.filters = PackedStringArray(["*.svg ; SVG"])
+		_svg_dlg.file_selected.connect(_import_svg_strokes)
+		add_child(_svg_dlg)
+	return _svg_dlg
+
+
+## SVG paths -> direction strokes, fitted into the canvas.
+func _import_svg_strokes(path: String) -> void:
+	var l := _l()
+	var parsed := Svg.parse_file(path)
+	if l == null or not l.is_direction() or parsed.paths.is_empty():
+		App.status.emit("No paths found")
+		return
+	var b: Rect2 = parsed.bounds
+	var px := App.project.canvas_px()
+	var k := minf(px.x * 0.9 / maxf(b.size.x, 1e-6), px.y * 0.9 / maxf(b.size.y, 1e-6))
+	var off := px * 0.5 - b.get_center() * k
+	App.perform("Import SVG strokes", func():
+		for pa in parsed.paths:
+			var pts := PackedVector2Array()
+			for v in pa.points:
+				pts.append(v * k + off)
+			l.strokes_at(App.frame).append(DirStroke.make("bezier", "path", pts, 0.0, 1.0)))

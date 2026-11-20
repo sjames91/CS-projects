@@ -37,6 +37,7 @@ static func to_dict(p: ProjectData) -> Dictionary:
 		"palette": pal,
 		"palette_lock": p.palette_lock,
 		"display": p.display,
+		"shapes": p.shapes.values().map(func(sh): return Shape.to_json(sh)),
 		"animation": {"frame_count": p.frame_count, "fps": p.fps, "durations": Array(p.frame_durations)},
 		"next_layer_id": p.next_layer_id,
 		"layers": ls,
@@ -68,6 +69,10 @@ static func from_dict(src: Dictionary) -> Dictionary:
 	lock.merge(d.get("palette_lock", {}), true)
 	p.palette_lock = lock
 	p.display = d.get("display", {})
+	for sj in d.get("shapes", []):
+		var sh := Shape.from_json(sj)
+		p.shapes[sh.id] = sh
+	p.register_shapes()
 	var anim: Dictionary = d.get("animation", {})
 	p.frame_count = max(int(anim.get("frame_count", 1)), 1)
 	p.fps = int(anim.get("fps", 12))

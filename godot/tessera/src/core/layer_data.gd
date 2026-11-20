@@ -7,8 +7,8 @@ extends RefCounted
 enum Blend { NORMAL, MULTIPLY, SCREEN, OVERLAY, ADD }
 const BLEND_NAMES := ["Normal", "Multiply", "Screen", "Overlay", "Add"]
 
-enum Style { FLAT, DOT, CROSS_STITCH, LED, LITE_BRITE, BRUSH_DAB, MOSAIC, CRT }
-const STYLE_NAMES := ["Flat", "Dot", "Cross-stitch X", "LED dot", "Lite-Brite peg", "Brush dab", "Mosaic tile", "CRT phosphor"]
+enum Style { FLAT, DOT, CROSS_STITCH, LED, LITE_BRITE, BRUSH_DAB, MOSAIC, CRT, SVG_STAMP }
+const STYLE_NAMES := ["Flat", "Dot", "Cross-stitch X", "LED dot", "Lite-Brite peg", "Brush dab", "Mosaic tile", "CRT phosphor", "SVG stamp"]
 
 const DEFAULT_SETTINGS := {
 	"style": 0,
@@ -33,6 +33,7 @@ const DEFAULT_SETTINGS := {
 	"flow_layer": 0,
 	"offset_mode": 0,
 	"patterns": [],
+	"stamp_shape": "",
 	"flow_strength": 1.0,
 	"flow_rd": false,
 	"flow_stamp_rot": false,
@@ -73,6 +74,9 @@ var frames: Array[PackedByteArray] = []
 ## (a single entry when the layer is static).
 var stroke_frames: Array = [[]]
 
+## Bumped whenever any custom shape's geometry changes (rebuilds tilings).
+static var shape_epoch := 0
+
 var _tiling: Tiling = null
 var _tiling_key: String = ""
 
@@ -84,7 +88,7 @@ func is_direction() -> bool:
 func tiling(cell_size: float, canvas_px: Vector2) -> Tiling:
 	var mode := int(setting("offset_mode"))
 	var amount := float(setting("offset_amount"))
-	var key := "%s|%s|%s|%s|%d|%s" % [tiling_id, cell_size, canvas_px, JSON.stringify(tiling_params), mode, amount]
+	var key := "%s|%s|%s|%s|%d|%s|%d" % [tiling_id, cell_size, canvas_px, JSON.stringify(tiling_params), mode, amount, shape_epoch]
 	if _tiling == null or key != _tiling_key:
 		_tiling = LayerData.make_tiling(tiling_id, tiling_params, mode, amount, cell_size, canvas_px)
 		_tiling_key = key

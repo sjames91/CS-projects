@@ -114,9 +114,13 @@ func configure_material(mat: ShaderMaterial, layer: LayerData, frame: int) -> vo
 	mat.set_shader_parameter("cell_style", int(s.get("style", 0)))
 	mat.set_shader_parameter("pal_count", maxi(App.project.palette.size(), 1))
 	mat.set_shader_parameter("flow_drift", _drift(layer, frame))
+	var stex := stamp_texture(str(s.get("stamp_shape", "")))
+	mat.set_shader_parameter("stamp_on", stex != null)
+	if stex:
+		mat.set_shader_parameter("stamp_tex", stex)
 	_bind_patterns(mat, layer, frame, t)
 	for k in s:
-		if k in ["style", "flow_layer", "patterns", "dir", "offset_mode", "offset_amount"]:
+		if k in ["style", "flow_layer", "patterns", "dir", "offset_mode", "offset_amount", "stamp_shape"]:
 			continue
 		var v = s[k]
 		if k == "grout_color":
@@ -464,3 +468,21 @@ func _drift(layer: LayerData, frame: int) -> float:
 	if not layer.setting("flow_animate"):
 		return 0.0
 	return float(frame) * float(layer.setting("flow_speed")) * 0.25
+
+
+
+var _stamps := {}  # shape id -> {key, tex}
+
+
+## Stamp shape SDF texture (GPU-baked once per shape edit).
+func stamp_texture(shape_id: String) -> ImageTexture:
+	if shape_id == "" or not App.project.shapes.has(shape_id):
+		return null
+	var sh: Dictionary = App.project.shapes[shape_id]
+	var key := str(hash(Shape.to_json(sh)))
+	var e: Dictionary = _stamps.get(shape_id, {})
+	if e.get("key", "") == key:
+		return e.tex
+	var tex := ImageTexture.create_from_image(Shape.stamp_sdf(sh))
+	_stamps[shape_id] = {"key": key, "tex": tex}
+	return tex
