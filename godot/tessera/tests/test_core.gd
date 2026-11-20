@@ -14,8 +14,16 @@ func _initialize() -> void:
 	await process_frame
 	var gpu = root.get_node("Gpu")
 	var canvas := Vector2(160, 128)
-	for id in TilingRegistry.ids():
-		var t := TilingRegistry.create(id, 8.0, canvas, TilingRegistry.default_params(id))
+	var variants: Array = []
+	for tid in TilingRegistry.ids():
+		variants.append([tid, 0])
+		var b := TilingRegistry.create(tid, 8.0, canvas, {})
+		for m in OffsetTiling.modes_for(b):
+			if m != 0:
+				variants.append([tid, m])
+	for v in variants:
+		var id: String = "%s+off%d" % v
+		var t := LayerData.make_tiling(v[0], TilingRegistry.default_params(v[0]), v[1], 0.37 if v[1] != 4 else 0.5, 8.0, canvas)
 		# center -> cell round trip and neighbor symmetry
 		var bad := 0
 		for i in t.cell_count():

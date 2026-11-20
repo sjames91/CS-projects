@@ -16,7 +16,9 @@ extends RefCounted
 ##         shrinking it by `inset` and rounding its corners by `rnd`.
 ##   float TL_inradius(float cs)
 ## The snippet must only use math (no textures) so it also compiles inside
-## compute shaders. tp is glsl_params().
+## compute shaders. tp is glsl_params(): tp.xy belong to the tiling itself,
+## tp.zw are reserved for the Offset decorator. Anything else a snippet
+## needs is baked in as constants, and shader_key() changes with it.
 
 const INVALID := Vector2i(-2147483648, -2147483648)
 
@@ -147,6 +149,11 @@ func glsl() -> String:
 
 func glsl_params() -> Vector4:
 	return Vector4.ZERO
+
+
+## Shaders are cached by this key; it must change whenever glsl() does.
+func shader_key() -> String:
+	return id()
 
 
 ## Returns glsl() with the TL_ prefix replaced, e.g. "src_" / "dst_".

@@ -318,7 +318,7 @@ func resample_cells(src_cells: PackedByteArray, src: Tiling, dst: Tiling, offset
 		var empty := PackedByteArray()
 		empty.resize(n)
 		return empty
-	var key := "resample_%s_%s" % [src.id(), dst.id()]
+	var key := "resample_%s_%s" % [src.shader_key(), dst.shader_key()]
 	var code := "#version 450\nlayout(local_size_x = 64) in;\n" + \
 		"layout(set = 0, binding = 0, std430) restrict readonly buffer Src { uint b[]; } srcb;\n" + \
 		"layout(set = 0, binding = 1, std430) restrict writeonly buffer Dst { uint b[]; } dstb;\n" + \

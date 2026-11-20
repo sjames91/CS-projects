@@ -40,7 +40,7 @@ vec4 composite(vec4 dst, vec4 src, int m) {
 
 
 static func layer_shader(t: Tiling) -> Shader:
-	var key := t.id()
+	var key := t.shader_key()
 	if _layer_cache.has(key):
 		return _layer_cache[key]
 	var s := Shader.new()
@@ -50,7 +50,7 @@ static func layer_shader(t: Tiling) -> Shader:
 
 
 static func overlay_shader(t: Tiling) -> Shader:
-	var key := t.id()
+	var key := t.shader_key()
 	if _overlay_cache.has(key):
 		return _overlay_cache[key]
 	var s := Shader.new()

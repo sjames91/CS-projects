@@ -155,11 +155,15 @@ func rotation_step_deg() -> float:
 
 
 func glsl_params() -> Vector4:
-	return Vector4(_jitter, float(_seed), float(grid.x), float(grid.y))
+	return Vector4(_jitter, float(_seed), 0.0, 0.0)
+
+
+func shader_key() -> String:
+	return "voronoi_%dx%d" % [grid.x, grid.y]
 
 
 func glsl() -> String:
-	return """
+	return ("const int TL_GX = %d;\nconst int TL_GY = %d;\n" % [grid.x, grid.y]) + """
 uint TL_hash(uint x, uint y, uint s) {
 	uint h = x * 374761393u + y * 668265263u + s * 2246822519u;
 	h = (h ^ (h >> 13u)) * 1274126177u;
@@ -170,7 +174,7 @@ vec2 TL_center(ivec2 c, float cs, vec4 tp) {
 	vec2 j = vec2(float(h & 65535u), float(h >> 16u)) / 65536.0;
 	return (vec2(c) + 0.5 + tp.x * (j - 0.5)) * cs;
 }
-bool TL_valid(ivec2 c, vec4 tp) { return c.x >= 0 && c.y >= 0 && c.x < int(tp.z) && c.y < int(tp.w); }
+bool TL_valid(ivec2 c, vec4 tp) { return c.x >= 0 && c.y >= 0 && c.x < TL_GX && c.y < TL_GY; }
 ivec2 TL_cell(vec2 p, float cs, vec4 tp) {
 	ivec2 base = ivec2(floor(p / cs));
 	ivec2 best = ivec2(-1000000);
@@ -208,3 +212,12 @@ float TL_sdf(vec2 p, ivec2 c, float cs, vec4 tp, float inset, float rnd) {
 	return inset - inside;
 }
 """
+
+
+## No straight columns (or rows, for Voronoi), so brick offsets do not apply.
+func staggered_cols() -> bool:
+	return true
+
+
+func staggered_rows() -> bool:
+	return true

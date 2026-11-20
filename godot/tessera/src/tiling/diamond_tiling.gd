@@ -86,3 +86,8 @@ float TL_sdf(vec2 p, ivec2 c, float cs, vec4 tp, float inset, float rnd) {
 	return length(max(d, vec2(0.0))) + min(max(d.x, d.y), 0.0) - rnd;
 }
 """
+
+
+## No straight columns (or rows, for Voronoi), so brick offsets do not apply.
+func staggered_cols() -> bool:
+	return true

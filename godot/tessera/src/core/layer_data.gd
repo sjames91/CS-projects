@@ -31,6 +31,8 @@ const DEFAULT_SETTINGS := {
 	"jitter_rot": 0.2,
 	"jitter_seed": 1,
 	"flow_layer": 0,
+	"offset_mode": 0,
+	"offset_amount": 0.5,
 	"scan_on": false,
 	"scan_thickness": 0.4,
 	"scan_dark": 0.5,
@@ -70,11 +72,23 @@ func is_direction() -> bool:
 
 
 func tiling(cell_size: float, canvas_px: Vector2) -> Tiling:
-	var key := "%s|%s|%s|%s" % [tiling_id, cell_size, canvas_px, JSON.stringify(tiling_params)]
+	var mode := int(setting("offset_mode"))
+	var amount := float(setting("offset_amount"))
+	var key := "%s|%s|%s|%s|%d|%s" % [tiling_id, cell_size, canvas_px, JSON.stringify(tiling_params), mode, amount]
 	if _tiling == null or key != _tiling_key:
-		_tiling = TilingRegistry.create(tiling_id, cell_size, canvas_px, tiling_params)
+		_tiling = LayerData.make_tiling(tiling_id, tiling_params, mode, amount, cell_size, canvas_px)
 		_tiling_key = key
 	return _tiling
+
+
+## Base tiling, wrapped by the Offset decorator when an offset is set. With an
+## offset the wrapped tiling covers one extra cell so the shifted grid still
+## covers the whole canvas.
+static func make_tiling(tid: String, tparams: Dictionary, offset_mode: int, amount: float, cell_size: float, canvas_px: Vector2) -> Tiling:
+	if offset_mode == 0:
+		return TilingRegistry.create(tid, cell_size, canvas_px, tparams)
+	var b := TilingRegistry.create(tid, cell_size, canvas_px + Vector2(cell_size, cell_size), tparams)
+	return OffsetTiling.wrap(b, cell_size, canvas_px, offset_mode, amount)
 
 
 func frame_index(frame: int) -> int:

@@ -253,10 +253,36 @@ func resample_layer(layer: LayerData, from_t: Tiling, to_t: Tiling, offset := Ve
 	layer.frames = out
 
 
+func _layer_tiling_with(layer: LayerData, tid: String, tparams: Dictionary, mode: int, cell_size: int, canvas: Vector2) -> Tiling:
+	return LayerData.make_tiling(tid, tparams, mode, float(layer.setting("offset_amount")), cell_size, canvas)
+
+
+## Offset on/off changes the grid size by one row/column. Cells keep their
+## coordinates (the content moves with the grid), so this is a plain
+## re-stride of each frame (native Image blit, no per-cell loop).
+func set_layer_offset(layer: LayerData, mode: int) -> void:
+	perform("Offset", func():
+		var old_t := tiling_of(layer)
+		layer.settings["offset_mode"] = mode
+		var new_t := tiling_of(layer)
+		if old_t.grid != new_t.grid:
+			var out: Array[PackedByteArray] = []
+			for f in layer.frames:
+				var src := Image.create_from_data(old_t.grid.x, old_t.grid.y, false, Image.FORMAT_R8, f)
+				var dst := Image.create(new_t.grid.x, new_t.grid.y, false, Image.FORMAT_R8)
+				dst.blit_rect(src, Rect2i(Vector2i.ZERO, old_t.grid.min(new_t.grid)), Vector2i.ZERO)
+				out.append(dst.get_data())
+			layer.frames = out
+		if selection_layer_id == layer.id:
+			clear_selection(false)
+	, [layer.id])
+
+
 func change_layer_tiling(layer: LayerData, new_id: String, new_params: Dictionary) -> void:
 	perform("Change tiling", func():
-		var old_t := TilingRegistry.create(layer.tiling_id, project.cell_size, project.canvas_px(), layer.tiling_params)
-		var new_t := TilingRegistry.create(new_id, project.cell_size, project.canvas_px(), new_params)
+		var mode := int(layer.setting("offset_mode"))
+		var old_t := _layer_tiling_with(layer, layer.tiling_id, layer.tiling_params, mode, project.cell_size, project.canvas_px())
+		var new_t := _layer_tiling_with(layer, new_id, new_params, mode, project.cell_size, project.canvas_px())
 		resample_layer(layer, old_t, new_t)
 		layer.tiling_id = new_id
 		layer.tiling_params = new_params.duplicate()
@@ -274,14 +300,15 @@ func resize_canvas(new_cells: Vector2i, new_cell_size: int, anchor: Vector2) -> 
 		var scale := float(new_cell_size) / float(project.cell_size)
 		var delta := ((new_px - old_px * scale) * anchor / new_cell_size).round() * new_cell_size
 		for l in project.layers:
-			var old_t := TilingRegistry.create(l.tiling_id, project.cell_size, old_px, l.tiling_params)
-			var new_t := TilingRegistry.create(l.tiling_id, new_cell_size, new_px, l.tiling_params)
+			var mode := int(l.setting("offset_mode"))
+			var old_t := _layer_tiling_with(l, l.tiling_id, l.tiling_params, mode, project.cell_size, old_px)
+			var new_t := _layer_tiling_with(l, l.tiling_id, l.tiling_params, mode, new_cell_size, new_px)
 			if scale == 1.0:
 				resample_layer(l, old_t, new_t, -delta)
 			else:
 				# Cell size change: the old grid scaled up has the same cell
 				# coordinates, so map from a scaled copy of the old tiling.
-				var scaled_t := TilingRegistry.create(l.tiling_id, new_cell_size, old_px * scale, l.tiling_params)
+				var scaled_t := _layer_tiling_with(l, l.tiling_id, l.tiling_params, mode, new_cell_size, old_px * scale)
 				resample_layer(l, scaled_t, new_t, -delta)
 			var moved: Array = []
 			for s in l.strokes:

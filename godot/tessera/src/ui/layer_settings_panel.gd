@@ -178,6 +178,30 @@ func _build() -> void:
 		_box.add_child(_slider("Rotation", "jitter_rot", 0.0, 1.0, 0.01))
 		_box.add_child(_slider("Seed", "jitter_seed", 0, 9999, 1))
 
+	_build_crt(l)
+	_build_offset(l)
+
+
+func _build_offset(l: LayerData) -> void:
+	_section("5 · Offset")
+	var base: Tiling = App.tiling_of(l)
+	if base is OffsetTiling:
+		base = (base as OffsetTiling).base
+	var modes: Array = OffsetTiling.modes_for(base)
+	var names: Array = modes.map(func(m): return OffsetTiling.MODE_NAMES[m])
+	var cur := int(l.setting("offset_mode"))
+	var o := UiKit.option(names, maxi(modes.find(cur), 0), func(i): App.set_layer_offset(l, modes[i]))
+	o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var lab := UiKit.label("Offset")
+	lab.custom_minimum_size.x = 96
+	_box.add_child(UiKit.hbox([lab, o]))
+	if cur != 0:
+		_box.add_child(_slider("Amount (cells)", "offset_amount", 0.0, 1.0, 0.01))
+	if modes.size() < OffsetTiling.MODE_NAMES.size():
+		_box.add_child(UiKit.label("Brick modes hidden: this tiling is already staggered.", true))
+
+
+func _build_crt(l: LayerData) -> void:
 	_section("3 · Features — CRT")
 	_box.add_child(_check("Scanlines", "scan_on"))
 	if l.setting("scan_on"):
