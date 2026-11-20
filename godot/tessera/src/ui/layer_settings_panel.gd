@@ -152,7 +152,27 @@ func _build() -> void:
 		_box.add_child(_slider("Dither width", "boundary_width", 0.05, 1.0, 0.01))
 	_box.add_child(_check("Jitter", "jitter_on", "The only source of per-cell random movement"))
 	if l.setting("jitter_on"):
-		_box.add_child(_choice("Driven by", "jitter_source", ["Random"]))
+		_box.add_child(_choice("Driven by", "jitter_source", ["Random", "Flow (Direction Layer)"]))
+		if int(l.setting("jitter_source")) == 1:
+			var dirs: Array = [["None", 0]]
+			for d in App.project.layers:
+				if d.is_direction():
+					dirs.append([d.name, d.id])
+			var dir_names: Array = dirs.map(func(e): return e[0])
+			var cur := 0
+			for i in dirs.size():
+				if dirs[i][1] == int(l.setting("flow_layer")):
+					cur = i
+			var o := UiKit.option(dir_names, cur, func(i):
+				App.begin_change()
+				_set_setting("flow_layer", dirs[i][1])
+				App.end_change("Link direction layer"))
+			o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var lab := UiKit.label("Follow")
+			lab.custom_minimum_size.x = 96
+			_box.add_child(UiKit.hbox([lab, o]))
+			if dirs.size() == 1:
+				_box.add_child(UiKit.label("Add a direction layer (+ Dir) and draw arrows.", true))
 		_box.add_child(_slider("Position", "jitter_pos", 0.0, 1.0, 0.01))
 		_box.add_child(_slider("Size", "jitter_size", 0.0, 1.0, 0.01))
 		_box.add_child(_slider("Rotation", "jitter_rot", 0.0, 1.0, 0.01))

@@ -114,6 +114,9 @@ uniform float jitter_pos = 0.25;
 uniform float jitter_size = 0.2;
 uniform float jitter_rot = 0.2;
 uniform float jitter_seed = 1.0;
+uniform int jitter_source = 0;   // 0 random, 1 flow
+uniform bool flow_on = false;
+uniform sampler2D flow_tex : filter_linear, repeat_disable;
 uniform bool scan_on = false;
 uniform float scan_thickness = 0.4;
 uniform float scan_dark = 0.5;
@@ -335,6 +338,15 @@ vec4 layer_color(vec2 p, float aa) {
 		vec2 off = (h.xy - 0.5) * 2.0 * jitter_pos * inr;
 		scl *= max(0.05, 1.0 + (h.z - 0.5) * 2.0 * jitter_size);
 		float ang = (h2.x - 0.5) * 2.0 * jitter_rot * PI;
+		if (jitter_source == 1 && flow_on) {
+			// Follow the linked Direction Layer: slide along the flow and
+			// turn toward it (rotation amount 1 = fully aligned).
+			vec2 f = texture(flow_tex, ctr / canvas_px).rg;
+			if (dot(f, f) > 1e-6) {
+				off = f * jitter_pos * inr * (0.5 + h.x);
+				ang = atan(f.y, f.x) * jitter_rot;
+			}
+		}
 		q = ctr + rot2(p - ctr - off, -ang);
 	}
 	q = ctr + (q - ctr) / scl;

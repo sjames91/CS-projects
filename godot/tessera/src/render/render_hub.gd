@@ -17,6 +17,7 @@ var _queue: Array = []  # [lid, frame]
 var _rendering := false
 var _vp: SubViewport
 var _rect: ColorRect
+var _flow := {}  # direction layer id -> {key, tex}
 var _mask_src := PackedByteArray()
 var _mask_tex: ImageTexture
 var _last_active := -1
@@ -103,9 +104,13 @@ func configure_material(mat: ShaderMaterial, layer: LayerData, frame: int) -> vo
 	mat.set_shader_parameter("opacity", layer.opacity)
 	mat.set_shader_parameter("blend_mode", layer.blend_mode)
 	var s := layer.settings
+	var flow_tex := _flow_texture(int(s.get("flow_layer", 0)))
+	mat.set_shader_parameter("flow_on", flow_tex != null)
+	if flow_tex:
+		mat.set_shader_parameter("flow_tex", flow_tex)
 	mat.set_shader_parameter("cell_style", int(s.get("style", 0)))
 	for k in s:
-		if k == "style":
+		if k == "style" or k == "flow_layer":
 			continue
 		var v = s[k]
 		if k == "grout_color":
@@ -263,3 +268,23 @@ func render_layer_image(layer: LayerData, frame: int, size: Vector2i) -> Image:
 	var img := _vp.get_texture().get_image()
 	_rendering = false
 	return img
+
+
+## Flow field of a direction layer, recomputed (GPU) only when its strokes
+## or the canvas change.
+func _flow_texture(dir_id: int) -> ImageTexture:
+	if dir_id <= 0:
+		return null
+	var d := App.project.layer_by_id(dir_id)
+	if d == null or not d.is_direction() or d.strokes.is_empty():
+		return null
+	var px := App.project.canvas_px()
+	var key := str(px) + ":" + str(d.strokes.hash())
+	var entry: Dictionary = _flow.get(dir_id, {})
+	if entry.get("key", "") == key:
+		return entry.tex
+	var res := Vector2i(App.project.canvas_cells).clamp(Vector2i.ONE, Vector2i(512, 512))
+	var img := Gpu.flow_field(d.strokes, res, px)
+	var tex := ImageTexture.create_from_image(img)
+	_flow[dir_id] = {"key": key, "tex": tex}
+	return tex

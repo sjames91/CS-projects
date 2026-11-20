@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS := {
 	"jitter_size": 0.2,
 	"jitter_rot": 0.2,
 	"jitter_seed": 1,
+	"flow_layer": 0,
 	"scan_on": false,
 	"scan_thickness": 0.4,
 	"scan_dark": 0.5,

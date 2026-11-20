@@ -387,3 +387,49 @@ void main() {
 	var out: PackedByteArray = res[0]
 	out.resize(n)
 	return out
+
+
+## Flow field from direction strokes: every texel gets the inverse-distance
+## weighted tangent of all stroke segments. Returns an RGF image (x, y).
+func flow_field(strokes: Array, size: Vector2i, canvas_px: Vector2) -> Image:
+	var segs := PackedFloat32Array()
+	for s in strokes:
+		for i in range(s.size() - 1):
+			segs.append_array([s[i].x, s[i].y, s[i + 1].x, s[i + 1].y])
+	var n := segs.size() / 4
+	var out := PackedByteArray()
+	out.resize(size.x * size.y * 8)
+	if rd == null or n == 0:
+		return Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGF, out)
+	var code := """#version 450
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(set = 0, binding = 0, std430) restrict readonly buffer Segs { vec4 s[]; } segs;
+layout(set = 0, binding = 1, std430) restrict writeonly buffer Out { vec2 v[]; } outb;
+layout(push_constant, std430) uniform P { int w; int h; int n; float falloff; vec2 canvas; } pc;
+void main() {
+	ivec2 g = ivec2(gl_GlobalInvocationID.xy);
+	if (g.x >= pc.w || g.y >= pc.h) { return; }
+	vec2 p = (vec2(g) + 0.5) / vec2(pc.w, pc.h) * pc.canvas;
+	vec2 acc = vec2(0.0);
+	for (int i = 0; i < pc.n; i++) {
+		vec2 a = segs.s[i].xy;
+		vec2 b = segs.s[i].zw;
+		vec2 ab = b - a;
+		float len2 = max(dot(ab, ab), 1e-6);
+		float t = clamp(dot(p - a, ab) / len2, 0.0, 1.0);
+		float d = length(p - (a + ab * t));
+		float wgt = sqrt(len2) / (d * d + pc.falloff * pc.falloff);
+		acc += normalize(ab) * wgt;
+	}
+	float l = length(acc);
+	outb.v[g.y * pc.w + g.x] = l > 1e-9 ? acc / l : vec2(0.0);
+}
+"""
+	var falloff := maxf(canvas_px.x, canvas_px.y) / 64.0
+	var pc := push().i(size.x).i(size.y).i(n).f(falloff).v2(canvas_px)
+	var res := run("flow_field", code, [segs.to_byte_array(), out], pc.bytes, Vector3i(ceili(size.x / 8.0), ceili(size.y / 8.0), 1), [1])
+	if res.is_empty():
+		return Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGF, out)
+	var data: PackedByteArray = res[0]
+	data.resize(size.x * size.y * 8)
+	return Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGF, data)

@@ -45,8 +45,8 @@ resamples its cells (with a confirm dialog).
 **Layer settings built so far:** tiling; cell styles (flat, dot, cross-stitch X,
 LED dot, Lite-Brite peg, brush dab, mosaic tile, CRT phosphor); features:
 rounding (plain, or color-aware with outer-only / inner+outer corners), gap +
-grout color, hard or dithered color boundaries, random jitter (position, size,
-rotation, seed), CRT scanlines, phosphor masks (aperture grille, slot, shadow),
+grout color, hard or dithered color boundaries, jitter (position, size, rotation,
+seed) driven by random or by a Direction Layer's flow, CRT scanlines, phosphor masks (aperture grille, slot, shadow),
 beam spot, horizontal bleed.
 
 **Part 2 (animation) — partly built:** frames per layer, static layers,
@@ -55,10 +55,12 @@ loop/ping-pong/once, step, onion skin on the main canvas. Animated features
 (flicker, noise, flow motion) are not built yet.
 
 **Not built yet:** Patterns (reaction-diffusion, noise, Worley, halftone,
-Bayer, hatching, weave/knit, wood/marble) and what they drive; the Direction
-Layer's flow field and layers following it (you can already draw and erase
-direction strokes); SVG stamps and the Shape Editor; Offset; the rest of the
-spec after "Jitter" in Part 3.
+Bayer, hatching, weave/knit, wood/marble) and what they drive; SVG stamps
+and the Shape Editor; Offset; the rest of the spec after "Jitter" in Part 3.
+
+**Direction layers:** draw arrows/curves (left), erase strokes (right). A
+flow field is computed on the GPU from the strokes (only when a stroke is
+finished) and any layer can follow it via Jitter → Driven by → Flow.
 
 ## Architecture
 
@@ -67,7 +69,7 @@ src/core     App (autoload state + undo helpers), ProjectData, LayerData,
              ProjectIO (save/load/migrations), OkLab, UndoStack
 src/tiling   Tiling interface + square/hex/triangle/diamond/voronoi, registry
 src/gpu      Gpu autoload: compute kernels (palette snap, unique colors,
-             k-means, cross-tiling resample, palette remap)
+             k-means, cross-tiling resample, palette remap, flow field)
 src/render   ShaderBuilder (layer, overlay, compositor shaders), RenderHub
              (cell textures + layer cache images), CompositeView
 src/tools    ToolController (all tools), SelectionOps
@@ -106,4 +108,5 @@ Needs a Vulkan device (a software one such as lavapipe works):
 ```
 godot --path . -s tests/test_core.gd           # tilings, GPU kernels, IO
 godot --path . res://tests/interaction.tscn    # real mouse events on the canvas
+godot --path . res://tests/screenshot.tscn     # renders every tiling/style (SHOT_DIR=…)
 ```
