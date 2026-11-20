@@ -114,7 +114,7 @@ uniform float jitter_pos = 0.25;
 uniform float jitter_size = 0.2;
 uniform float jitter_rot = 0.2;
 uniform float jitter_seed = 1.0;
-uniform int jitter_source = 0;   // 0 random, 1 flow
+uniform int jitter_source = 0;   // 0 random, 1 flow, 2 pattern
 uniform bool flow_on = false;
 uniform sampler2D flow_tex : filter_linear, repeat_disable;
 uniform bool scan_on = false;
@@ -129,7 +129,33 @@ uniform bool beam_on = false;
 uniform float beam_amount = 0.6;
 uniform bool bleed_on = false;
 uniform float bleed = 0.5;
-""" + COMMON + t.glsl() + """
+uniform int pal_count = 1;
+uniform int pat_count = 0;
+uniform int pat_view = -1;
+uniform int pat_flags[4];
+uniform int pat_src[4];
+uniform int pat_filter[32];
+uniform int pat_filtered[4];
+uniform vec4 pat_styles[4];
+uniform vec2 pat_size[4];
+uniform vec2 pat_rot[4];
+uniform vec2 pat_round[4];
+uniform vec2 pat_gap[4];
+uniform vec2 pat_jit[4];
+uniform vec2 pat_shift[4];
+uniform float pat_vis[4];
+uniform float pat_fine[4];
+uniform vec4 pat_a[4];
+uniform vec4 pat_b[4];
+uniform sampler2D pat0 : filter_nearest, repeat_disable;
+uniform sampler2D pat1 : filter_nearest, repeat_disable;
+uniform sampler2D pat2 : filter_nearest, repeat_disable;
+uniform sampler2D pat3 : filter_nearest, repeat_disable;
+uniform sampler2D patr0 : filter_linear, repeat_enable;
+uniform sampler2D patr1 : filter_linear, repeat_enable;
+uniform sampler2D patr2 : filter_linear, repeat_enable;
+uniform sampler2D patr3 : filter_linear, repeat_enable;
+""" + COMMON + t.glsl() + OkLab.GLSL + Patterns.GLSL + """
 
 int cell_val(ivec2 c) {
 	if (c.x < 0 || c.y < 0 || c.x >= grid.x || c.y >= grid.y) { return 0; }
@@ -137,6 +163,28 @@ int cell_val(ivec2 c) {
 }
 
 vec4 pal(int v) { return texelFetch(palette_tex, ivec2(v - 1, 0), 0); }
+
+float pat_value(int i, ivec2 c) {
+	if (i == 0) { return texelFetch(pat0, c, 0).r; }
+	if (i == 1) { return texelFetch(pat1, c, 0).r; }
+	if (i == 2) { return texelFetch(pat2, c, 0).r; }
+	return texelFetch(pat3, c, 0).r;
+}
+
+float pat_raster(int i, vec2 uv) {
+	if (i == 0) { return texture(patr0, uv).r; }
+	if (i == 1) { return texture(patr1, uv).r; }
+	if (i == 2) { return texture(patr2, uv).r; }
+	return texture(patr3, uv).r;
+}
+
+// Does pattern slot i apply to palette entry v (colour filter)?
+bool pat_applies(int i, int v) {
+	if (i >= pat_count) { return false; }
+	if (pat_filtered[i] == 0) { return true; }
+	int word = pat_filter[i * 8 + (v >> 5)];
+	return ((word >> (v & 31)) & 1) != 0;
+}
 
 vec3 cell_hash(ivec2 c, float salt) {
 	uint h = uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(jitter_seed * 977.0 + salt) * 83492791u;
@@ -298,6 +346,38 @@ vec4 layer_color(vec2 p, float aa) {
 	}
 
 	if (v == 0) { return vec4(0.0); }
+
+	// Patterns: per-cell maps decide this cell's style and properties.
+	float pv[4];
+	bool pin[4];
+	int style = cell_style;
+	float size_mul = 1.0; float rot_add = 0.0; float jit_mul = 1.0;
+	bool rnd_over = false; float rnd_v = 0.0; bool gap_over = false; float gap_v = 0.0;
+	int v0 = v;
+	for (int i = 0; i < 4; i++) {
+		pin[i] = pat_applies(i, v0);
+		pv[i] = pin[i] ? pat_value(i, c) : 0.0;
+		if (!pin[i]) { continue; }
+		int fl = pat_flags[i];
+		float x = pv[i];
+		if ((fl & 128) != 0 && x < pat_vis[i] && pat_view < 0) { return vec4(0.0); }
+		if ((fl & 64) != 0) { v = clamp(v + int(round(mix(pat_shift[i].x, pat_shift[i].y, x))), 1, pal_count); }
+		if ((fl & 1) != 0) {
+			int n = max(int(pat_styles[i].w), 1);
+			int k = clamp(int(x * float(n)), 0, n - 1);
+			style = int(k == 0 ? pat_styles[i].x : (k == 1 ? pat_styles[i].y : pat_styles[i].z));
+		}
+		if ((fl & 2) != 0) { size_mul *= max(mix(pat_size[i].x, pat_size[i].y, x), 0.0); }
+		if ((fl & 4) != 0) { rot_add += mix(pat_rot[i].x, pat_rot[i].y, x) * PI; }
+		if ((fl & 8) != 0) { rnd_over = true; rnd_v = mix(pat_round[i].x, pat_round[i].y, x); }
+		if ((fl & 16) != 0) { gap_over = true; gap_v = mix(pat_gap[i].x, pat_gap[i].y, x); }
+		if ((fl & 32) != 0) { jit_mul *= mix(pat_jit[i].x, pat_jit[i].y, x); }
+	}
+	if (jitter_source == 2 && pin[0]) { jit_mul *= pv[0]; }
+	if (gap_over) { gap_px = clamp(gap_v, 0.0, 1.0) * inr; }
+	if (rnd_over) { rnd_px = clamp(rnd_v, 0.0, 1.0) * max(inr - gap_px, 0.0); }
+	else if (rounding_on) { rnd_px = rounding * max(inr - gap_px, 0.0); }
+
 	vec4 col = pal(v);
 	vec2 ctr = TL_center(c, ucs, utp);
 
@@ -329,26 +409,28 @@ vec4 layer_color(vec2 p, float aa) {
 
 	vec2 q = p;
 	float scl = 1.0;
-	if (beam_on && cell_style != 7) {
+	scl *= max(size_mul, 0.001);
+	if (beam_on && style != 7) {
 		scl *= mix(1.0, 0.45 + 0.75 * luma(col.rgb), beam_amount);
 	}
 	if (jitter_on) {
 		vec3 h = cell_hash(c, 0.0);
 		vec3 h2 = cell_hash(c, 31.0);
-		vec2 off = (h.xy - 0.5) * 2.0 * jitter_pos * inr;
-		scl *= max(0.05, 1.0 + (h.z - 0.5) * 2.0 * jitter_size);
-		float ang = (h2.x - 0.5) * 2.0 * jitter_rot * PI;
+		vec2 off = (h.xy - 0.5) * 2.0 * jitter_pos * jit_mul * inr;
+		scl *= max(0.05, 1.0 + (h.z - 0.5) * 2.0 * jitter_size * jit_mul);
+		float ang = (h2.x - 0.5) * 2.0 * jitter_rot * jit_mul * PI;
 		if (jitter_source == 1 && flow_on) {
 			// Follow the linked Direction Layer: slide along the flow and
 			// turn toward it (rotation amount 1 = fully aligned).
 			vec2 f = texture(flow_tex, ctr / canvas_px).rg;
 			if (dot(f, f) > 1e-6) {
-				off = f * jitter_pos * inr * (0.5 + h.x);
+				off = f * jitter_pos * jit_mul * inr * (0.5 + h.x);
 				ang = atan(f.y, f.x) * jitter_rot;
 			}
 		}
 		q = ctr + rot2(p - ctr - off, -ang);
 	}
+	if (rot_add != 0.0) { q = ctr + rot2(q - ctr, -rot_add); }
 	q = ctr + (q - ctr) / scl;
 	vec2 l = q - ctr;
 	float tile_d = TL_sdf(q, c, ucs, utp, gap_px, rnd_px) * scl;
@@ -358,9 +440,9 @@ vec4 layer_color(vec2 p, float aa) {
 	float body = max(inr - gap_px, 0.0);
 	vec3 hc = cell_hash(c, 7.0);
 
-	if (cell_style == 1) {
+	if (style == 1) {
 		shape_d = (length(l) - dot_size * body) * scl;
-	} else if (cell_style == 2) {
+	} else if (style == 2) {
 		float a = body * 0.92 * dot_size / 0.8;
 		float th = max(stamp_thickness * body * 0.6, 0.3);
 		float d1 = sd_segment(l, vec2(-a, -a) * 0.7071, vec2(a, a) * 0.7071);
@@ -370,14 +452,14 @@ vec4 layer_color(vec2 p, float aa) {
 		shape_d = d * scl;
 		float across = clamp(-(d) / th, 0.0, 1.0);
 		rgb *= mix(0.65, 1.12, sqrt(across)) * (top ? 1.0 : 0.85);
-	} else if (cell_style == 3) {
+	} else if (style == 3) {
 		float r = max(dot_size * body, 0.5);
 		float dist = length(l);
 		float core = 1.0 - smoothstep(r * 0.45, r, dist);
 		float glow = exp(-max(dist - r * 0.5, 0.0) / (r * 0.45)) * 0.65;
 		rgb = rgb * (0.4 + 0.8 * core) + vec3(pow(core, 4.0) * 0.25);
 		alpha_mul = clamp(core + glow, 0.0, 1.0);
-	} else if (cell_style == 4) {
+	} else if (style == 4) {
 		float r = max(dot_size * body, 0.5);
 		vec2 lp = l;
 		float dist = length(lp);
@@ -386,14 +468,14 @@ vec4 layer_color(vec2 p, float aa) {
 		float spec = (1.0 - smoothstep(0.0, r * 0.35, length(lp - vec2(-0.32, -0.38) * r))) * 0.6;
 		vec3 pegc = rgb * shade + vec3(spec);
 		rgb = mix(vec3(0.03, 0.03, 0.035), pegc, peg);
-	} else if (cell_style == 5) {
+	} else if (style == 5) {
 		float r = max(dot_size * body, 0.5);
 		float ang = atan(l.y, l.x);
 		float rr = r * (1.0 + 0.12 * sin(ang * 3.0 + hc.x * 6.283) + 0.07 * sin(ang * 7.0 + hc.y * 12.0));
 		vec2 lr = rot2(l, hc.z * 6.283);
 		shape_d = (length(lr * vec2(1.0, 1.2)) - rr) * scl;
 		rgb *= 0.86 + 0.14 * sin(lr.y / max(inr, 0.5) * 16.0 + hc.x * 4.0);
-	} else if (cell_style == 6) {
+	} else if (style == 6) {
 		float g2 = gap_px + 0.06 * inr;
 		float r2 = max(rnd_px, 0.18 * inr);
 		shape_d = TL_sdf(q, c, ucs, utp, g2, r2) * scl;
@@ -403,7 +485,7 @@ vec4 layer_color(vec2 p, float aa) {
 		vec2 nrm = normalize(grad + vec2(1e-6));
 		float edge = smoothstep(-0.3 * inr, 0.0, shape_d);
 		rgb *= (0.92 + 0.16 * hc.x) * (1.0 + edge * dot(nrm, vec2(-0.7071, -0.7071)) * 0.45);
-	} else if (cell_style == 7) {
+	} else if (style == 7) {
 		float wcell = 2.0 * body;
 		float fx = clamp(l.x / max(wcell, 0.001) + 0.5, 0.0, 0.9999);
 		int k = int(floor(fx * 3.0));
@@ -421,11 +503,21 @@ vec4 layer_color(vec2 p, float aa) {
 
 	float cover = (1.0 - smoothstep(-aa, aa, shape_d)) * alpha_mul;
 	vec4 outc = vec4(rgb, col.a * cover);
-	if (cell_style == 4 || cell_style == 7) {
+	if (style == 4 || style == 7) {
 		outc.a = col.a * (1.0 - smoothstep(-aa, aa, tile_d));
 	}
-	if (gap_on && grout_on) {
+	// Fine texture: pattern drawn inside the cell at canvas coordinates.
+	float Lc = rgb_to_oklab(col.rgb).x;
+	for (int i = 0; i < 4; i++) {
+		if (!pin[i] || pat_fine[i] <= 0.0) { continue; }
+		float tv = pat_src[i] == 0 ? pat_raster(i, p / canvas_px) : pattern_eval(pat_src[i], p, ucs, pat_a[i], pat_b[i], Lc);
+		outc.rgb *= mix(1.0, 0.45 + 1.1 * tv, pat_fine[i]);
+	}
+	if ((gap_on || gap_over) && grout_on) {
 		outc = composite(grout_color, outc, 0);
+	}
+	if (pat_view >= 0 && pat_view < pat_count && pin[pat_view]) {
+		outc = vec4(mix(outc.rgb, vec3(pv[pat_view]), 0.85), 1.0);
 	}
 	outc.rgb = crt_post(outc.rgb, p);
 	return outc;

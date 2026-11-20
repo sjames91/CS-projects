@@ -158,6 +158,8 @@ func _live_entry(l: LayerData, f: int, raw: bool, used: Dictionary) -> Dictionar
 	mat.set_shader_parameter("node_origin", r.position)
 	mat.set_shader_parameter("node_size", r.size)
 	mat.set_shader_parameter("tile_mode", tile_mode)
+	if show_overlay and l.id == App.active_layer_id:
+		mat.set_shader_parameter("pat_view", int(App.pattern_view.get(l.id, -1)))
 	return {"tex": e.vp.get_texture(), "space": 1, "opacity": 1.0 if raw else l.opacity,
 		"mode": 0 if raw else l.blend_mode, "tint": Color.WHITE}
 

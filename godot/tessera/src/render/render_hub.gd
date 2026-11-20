@@ -18,6 +18,9 @@ var _rendering := false
 var _vp: SubViewport
 var _rect: ColorRect
 var _flow := {}  # direction layer id -> {key, tex}
+var _pat := {}   # "lid:slot:fi" -> {key, tex}
+var _rd := {}    # "lid:slot" -> {key, img, tex}
+var _blank_rf: ImageTexture
 var _mask_src := PackedByteArray()
 var _mask_tex: ImageTexture
 var _last_active := -1
@@ -109,8 +112,10 @@ func configure_material(mat: ShaderMaterial, layer: LayerData, frame: int) -> vo
 	if flow_tex:
 		mat.set_shader_parameter("flow_tex", flow_tex)
 	mat.set_shader_parameter("cell_style", int(s.get("style", 0)))
+	mat.set_shader_parameter("pal_count", maxi(App.project.palette.size(), 1))
+	_bind_patterns(mat, layer, frame, t)
 	for k in s:
-		if k == "style" or k == "flow_layer":
+		if k == "style" or k == "flow_layer" or k == "patterns":
 			continue
 		var v = s[k]
 		if k == "grout_color":
@@ -288,3 +293,122 @@ func _flow_texture(dir_id: int) -> ImageTexture:
 	var tex := ImageTexture.create_from_image(img)
 	_flow[dir_id] = {"key": key, "tex": tex}
 	return tex
+
+
+# ---- patterns -----------------------------------------------------------------
+
+func _blank_tex() -> ImageTexture:
+	if _blank_rf == null:
+		_blank_rf = ImageTexture.create_from_image(Image.create(1, 1, false, Image.FORMAT_RF))
+	return _blank_rf
+
+
+func _bind_patterns(mat: ShaderMaterial, layer: LayerData, frame: int, t: Tiling) -> void:
+	var slots := Patterns.slots(layer)
+	var n := mini(slots.size(), Patterns.MAX_SLOTS)
+	var flags := PackedInt32Array()
+	var srcs := PackedInt32Array()
+	var filt := PackedInt32Array()
+	var filtered := PackedInt32Array()
+	var styles: Array = []
+	var v2: Dictionary = {"size": [], "rotation": [], "rounding": [], "gap": [], "jitter": [], "shift": []}
+	var vis := PackedFloat32Array()
+	var fine := PackedFloat32Array()
+	var pa: Array = []
+	var pb: Array = []
+	filt.resize(32)
+	for i in Patterns.MAX_SLOTS:
+		var sl: Dictionary = slots[i] if i < n else Patterns.default_slot()
+		flags.append(int(sl.drives) if i < n else 0)
+		srcs.append(int(sl.source))
+		var cols: Array = sl.get("colors", [])
+		filtered.append(1 if not cols.is_empty() else 0)
+		for cidx in cols:
+			var ci := int(cidx)
+			if ci >= 0 and ci < 256:
+				filt[i * 8 + (ci >> 5)] |= 1 << (ci & 31)
+		var st: Array = sl.styles
+		styles.append(Vector4(st[0], st[1], st[2], int(sl.style_count)))
+		for k in v2:
+			v2[k].append(Vector2(sl[k][0], sl[k][1]))
+		vis.append(float(sl.visibility))
+		fine.append(float(sl.fine_amount) if sl.fine else 0.0)
+		pa.append(Patterns.params_a(sl))
+		pb.append(Patterns.params_b(sl))
+		var tex: Texture2D = _blank_tex()
+		var rtex: Texture2D = _blank_tex()
+		if i < n:
+			var r = _rd_raster(layer, i, sl)
+			if r:
+				rtex = r.tex
+			tex = _pattern_texture(layer, frame, i, sl, t, r.img if r else null)
+		mat.set_shader_parameter("pat%d" % i, tex)
+		mat.set_shader_parameter("patr%d" % i, rtex)
+	mat.set_shader_parameter("pat_count", n)
+	mat.set_shader_parameter("pat_flags", flags)
+	mat.set_shader_parameter("pat_src", srcs)
+	mat.set_shader_parameter("pat_filter", filt)
+	mat.set_shader_parameter("pat_filtered", filtered)
+	mat.set_shader_parameter("pat_styles", styles)
+	mat.set_shader_parameter("pat_size", v2.size)
+	mat.set_shader_parameter("pat_rot", v2.rotation)
+	mat.set_shader_parameter("pat_round", v2.rounding)
+	mat.set_shader_parameter("pat_gap", v2.gap)
+	mat.set_shader_parameter("pat_jit", v2.jitter)
+	mat.set_shader_parameter("pat_shift", v2.shift)
+	mat.set_shader_parameter("pat_vis", vis)
+	mat.set_shader_parameter("pat_fine", fine)
+	mat.set_shader_parameter("pat_a", pa)
+	mat.set_shader_parameter("pat_b", pb)
+	mat.set_shader_parameter("pat_view", -1)
+
+
+## Reaction-diffusion raster for a slot (null for other sources). Heavy: only
+## recomputed when its own parameters change, and never mid-drag.
+func _rd_raster(layer: LayerData, i: int, sl: Dictionary):
+	if int(sl.source) != Patterns.Src.REACTION_DIFFUSION:
+		return null
+	var px := App.project.canvas_px()
+	var flow_img: Image = null
+	var aniso := 0.0
+	if layer.setting("flow_rd") and int(layer.setting("flow_layer")) > 0:
+		flow_img = flow_image(int(layer.setting("flow_layer")))
+		aniso = float(layer.setting("flow_strength"))
+	var key := "%s|%s|%s|%s|%s|%s|%s|%s|%s" % [sl.seed, sl.scale, sl.feed, sl.kill, sl.iterations, px, App.project.cell_size, aniso, _flow.get(int(layer.setting("flow_layer")), {}).get("key", "")]
+	var k := "%d:%d" % [layer.id, i]
+	var e: Dictionary = _rd.get(k, {})
+	if e.get("key", "") == key or (App.in_change() and not e.is_empty()):
+		return e
+	busy_changed.emit(true)
+	var img := Patterns.reaction_diffusion(sl, px, App.project.cell_size, flow_img, aniso)
+	e = {"key": key, "img": img, "tex": ImageTexture.create_from_image(img)}
+	_rd[k] = e
+	busy_changed.emit(is_busy())
+	return e
+
+
+func _pattern_texture(layer: LayerData, frame: int, i: int, sl: Dictionary, t: Tiling, raster: Image) -> Texture2D:
+	var fi := layer.frame_index(frame)
+	var k := "%d:%d:%d" % [layer.id, i, fi]
+	var key := JSON.stringify(sl) + t.shader_key() + str(t.glsl_params()) + str(t.grid)
+	if raster:
+		key += str(_rd.get("%d:%d" % [layer.id, i], {}).get("key", ""))
+	if Patterns.uses_cells(sl):
+		key += str(hash(layer.frames[fi])) + str(App.project.palette)
+	var e: Dictionary = _pat.get(k, {})
+	if e.get("key", "") == key or (App.in_change() and not e.is_empty()):
+		return e.tex
+	var img := Patterns.cell_map(sl, t, layer.frames[fi], App.project.palette, raster)
+	var tex: ImageTexture = e.get("tex")
+	if tex and tex.get_size() == Vector2(img.get_size()):
+		tex.update(img)
+	else:
+		tex = ImageTexture.create_from_image(img)
+	_pat[k] = {"key": key, "tex": tex}
+	return tex
+
+
+## Pattern map value image for export/inspection.
+func flow_image(dir_id: int) -> Image:
+	var tex := _flow_texture(dir_id)
+	return tex.get_image() if tex else null

@@ -152,7 +152,7 @@ func _build() -> void:
 		_box.add_child(_slider("Dither width", "boundary_width", 0.05, 1.0, 0.01))
 	_box.add_child(_check("Jitter", "jitter_on", "The only source of per-cell random movement"))
 	if l.setting("jitter_on"):
-		_box.add_child(_choice("Driven by", "jitter_source", ["Random", "Flow (Direction Layer)"]))
+		_box.add_child(_choice("Driven by", "jitter_source", ["Random", "Flow (Direction Layer)", "Pattern (slot 1 value)"]))
 		if int(l.setting("jitter_source")) == 1:
 			var dirs: Array = [["None", 0]]
 			for d in App.project.layers:
@@ -179,6 +179,7 @@ func _build() -> void:
 		_box.add_child(_slider("Seed", "jitter_seed", 0, 9999, 1))
 
 	_build_crt(l)
+	_build_patterns(l)
 	_build_offset(l)
 
 
@@ -227,3 +228,196 @@ func _apply_tiling() -> void:
 		return
 	App.change_layer_tiling(l, _pending_tiling, TilingRegistry.default_params(_pending_tiling))
 	_pending_tiling = ""
+
+
+# ---- 4 · Patterns ------------------------------------------------------------
+
+func _slot(i: int) -> Dictionary:
+	return Patterns.slots(_l())[i]
+
+
+func _pset(i: int, key: String, v: Variant) -> void:
+	var l := _l()
+	l.settings.patterns[i][key] = v
+	App.layer_settings_changed.emit(l.id)
+
+
+func _pslider(i: int, text: String, key: String, minv: float, maxv: float, step: float) -> Control:
+	return UiKit.slider_row(text, minv, maxv, step, float(_slot(i)[key]),
+		func(v): _pset(i, key, int(v) if step >= 1.0 else v),
+		func(): App.begin_change(), func(): App.end_change("Pattern " + text))
+
+
+func _prange(i: int, text: String, key: String, minv: float, maxv: float, step := 0.01) -> Control:
+	var box := VBoxContainer.new()
+	var r: Array = _slot(i)[key]
+	box.add_child(UiKit.slider_row(text + " low", minv, maxv, step, float(r[0]),
+		func(v):
+			var a: Array = _slot(i)[key].duplicate()
+			a[0] = v
+			_pset(i, key, a),
+		func(): App.begin_change(), func(): App.end_change("Pattern " + text)))
+	box.add_child(UiKit.slider_row(text + " high", minv, maxv, step, float(r[1]),
+		func(v):
+			var a: Array = _slot(i)[key].duplicate()
+			a[1] = v
+			_pset(i, key, a),
+		func(): App.begin_change(), func(): App.end_change("Pattern " + text)))
+	return box
+
+
+func _pchange(i: int, key: String, v: Variant, action: String) -> void:
+	App.begin_change()
+	_pset(i, key, v)
+	App.end_change(action)
+	_queue()
+
+
+func _build_patterns(l: LayerData) -> void:
+	_section("4 · Patterns")
+	if not l.settings.has("patterns") or typeof(l.settings.patterns) != TYPE_ARRAY:
+		l.settings["patterns"] = []
+	var slots := Patterns.slots(l)
+	for i in slots.size():
+		_build_slot(l, i)
+	if slots.size() < Patterns.MAX_SLOTS:
+		_box.add_child(UiKit.button("+ Add pattern", func():
+			App.begin_change()
+			var sl := Patterns.default_slot()
+			sl.seed = randi() % 10000
+			l.settings.patterns.append(sl)
+			App.layer_settings_changed.emit(l.id)
+			App.end_change("Add pattern")
+			_queue()))
+
+
+func _build_slot(l: LayerData, i: int) -> void:
+	var sl := _slot(i)
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.19, 0.19, 0.23)
+	sb.set_content_margin_all(5)
+	panel.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	panel.add_child(v)
+	_box.add_child(panel)
+	var viewing := int(App.pattern_view.get(l.id, -1)) == i
+	var title := UiKit.header("Pattern %d" % (i + 1))
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_child(UiKit.hbox([title,
+		UiKit.toggle("Map view", viewing, func(on):
+			App.pattern_view[l.id] = i if on else -1
+			App.view_changed.emit()
+			_queue(), "Show this pattern as grayscale over the cells (main canvas only)"),
+		UiKit.button("Remove", func():
+			App.begin_change()
+			l.settings.patterns.remove_at(i)
+			App.pattern_view.erase(l.id)
+			App.layer_settings_changed.emit(l.id)
+			App.end_change("Remove pattern")
+			_queue())]))
+	var src := int(sl.source)
+	var so := UiKit.option(Patterns.SRC_NAMES, src, func(k): _pchange(i, "source", k, "Pattern source"))
+	so.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_child(UiKit.hbox([UiKit.label("Source"), so]))
+	if Patterns.MODES.has(src):
+		var mo := UiKit.option(Patterns.MODES[src], int(sl.mode), func(k): _pchange(i, "mode", k, "Pattern mode"))
+		mo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.add_child(UiKit.hbox([UiKit.label("Kind"), mo]))
+	var seed_row := _pslider(i, "Seed", "seed", 0, 9999, 1)
+	seed_row.add_child(UiKit.button("Randomize", func(): _pchange(i, "seed", randi() % 10000, "Randomize pattern")))
+	_place(v, seed_row)
+	if src != Patterns.Src.BAYER and src != Patterns.Src.LIGHTNESS:
+		_place(v, _pslider(i, "Scale (cells)", "scale", 0.25, 64.0, 0.25))
+	_place(v, _pslider(i, "Contrast", "contrast", 0.0, 4.0, 0.01))
+	if src in [Patterns.Src.HALFTONE, Patterns.Src.HATCHING, Patterns.Src.WEAVE, Patterns.Src.KNIT, Patterns.Src.WOOD, Patterns.Src.MARBLE]:
+		_place(v, _pslider(i, "Angle°", "angle", -180.0, 180.0, 1.0))
+	if src in [Patterns.Src.FRACTAL, Patterns.Src.WOOD, Patterns.Src.MARBLE]:
+		_place(v, _pslider(i, "Octaves", "octaves", 1, 8, 1))
+	if src in [Patterns.Src.WOOD, Patterns.Src.MARBLE]:
+		_place(v, _pslider(i, "Turbulence", "turbulence", 0.0, 3.0, 0.01))
+	if src == Patterns.Src.REACTION_DIFFUSION:
+		var names: Array = ["Preset…"] + Patterns.RD_PRESETS.keys()
+		var po := UiKit.option(names, 0, func(k):
+			if k > 0:
+				var fk: Array = Patterns.RD_PRESETS[names[k]]
+				App.begin_change()
+				_pset(i, "feed", fk[0])
+				_pset(i, "kill", fk[1])
+				App.end_change("Reaction-diffusion preset")
+				_queue())
+		v.add_child(UiKit.hbox([UiKit.label("Preset"), po]))
+		_place(v, _pslider(i, "Feed", "feed", 0.0, 0.1, 0.0005))
+		_place(v, _pslider(i, "Kill", "kill", 0.0, 0.1, 0.0005))
+		_place(v, _pslider(i, "Iterations", "iterations", 10, 20000, 10))
+	# Colour filter
+	var cols: Array = sl.get("colors", [])
+	var frow := HFlowContainer.new()
+	frow.add_child(UiKit.label("Applies to: " + ("all colors" if cols.is_empty() else "%d colors" % cols.size()), true))
+	var pal := App.project.palette
+	for ci in pal.size():
+		var b := Button.new()
+		b.toggle_mode = true
+		b.button_pressed = cols.has(ci + 1)
+		b.custom_minimum_size = Vector2(16, 16)
+		b.focus_mode = Control.FOCUS_NONE
+		var st := StyleBoxFlat.new()
+		st.bg_color = pal[ci]
+		st.set_border_width_all(2 if cols.has(ci + 1) else 0)
+		st.border_color = Color.WHITE
+		for nm in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(nm, st)
+		var idx := ci + 1
+		b.pressed.connect(func():
+			var c2: Array = _slot(i).get("colors", []).duplicate()
+			if c2.has(idx):
+				c2.erase(idx)
+			else:
+				c2.append(idx)
+			_pchange(i, "colors", c2, "Pattern colors"))
+		frow.add_child(b)
+	v.add_child(frow)
+	# What it drives
+	v.add_child(UiKit.label("Drives:", true))
+	var drives := int(sl.drives)
+	for flag in Patterns.DRIVE_NAMES:
+		var on: bool = (drives & int(flag)) != 0
+		var f: int = flag
+		v.add_child(UiKit.toggle(Patterns.DRIVE_NAMES[flag], on, func(t): _pchange(i, "drives", (int(_slot(i).drives) | f) if t else (int(_slot(i).drives) & ~f), "Pattern drive")))
+		if not on:
+			continue
+		match flag:
+			Patterns.Drive.STYLE:
+				var cnt := int(sl.style_count)
+				v.add_child(UiKit.hbox([UiKit.label("Styles"), UiKit.option(["2 (low / high)", "3 (low / mid / high)"], cnt - 2, func(k): _pchange(i, "style_count", k + 2, "Pattern styles"))]))
+				for si in cnt:
+					var sidx := si
+					var labels := ["Low", "Mid", "High"] if cnt == 3 else ["Low", "High"]
+					var o2 := UiKit.option(LayerData.STYLE_NAMES, int(sl.styles[si]), func(k):
+						var a: Array = _slot(i).styles.duplicate()
+						a[sidx] = k
+						_pchange(i, "styles", a, "Pattern style map"))
+					o2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+					v.add_child(UiKit.hbox([UiKit.label("  " + labels[si]), o2]))
+			Patterns.Drive.SIZE:
+				_place(v, _prange(i, "Size", "size", 0.0, 2.0))
+			Patterns.Drive.ROTATION:
+				_place(v, _prange(i, "Turns ½", "rotation", -2.0, 2.0))
+			Patterns.Drive.ROUNDING:
+				_place(v, _prange(i, "Rounding", "rounding", 0.0, 1.0))
+			Patterns.Drive.GAP:
+				_place(v, _prange(i, "Gap", "gap", 0.0, 1.0))
+			Patterns.Drive.JITTER:
+				_place(v, _prange(i, "Jitter ×", "jitter", 0.0, 2.0))
+			Patterns.Drive.PALETTE_SHIFT:
+				_place(v, _prange(i, "Shift steps", "shift", -16.0, 16.0, 1.0))
+			Patterns.Drive.VISIBILITY:
+				_place(v, _pslider(i, "Hide below", "visibility", 0.0, 1.0, 0.01))
+	v.add_child(UiKit.toggle("Fine texture inside cells", bool(sl.fine), func(t): _pchange(i, "fine", t, "Fine texture"),
+		"Draw the pattern as a sub-cell texture (same seed and canvas coordinates at every scale)"))
+	if sl.fine:
+		_place(v, _pslider(i, "Texture amount", "fine_amount", 0.0, 1.0, 0.01))
+
+
+func _place(parent: Control, c: Control) -> void:
+	parent.add_child(c)

@@ -47,6 +47,8 @@ var max_cache_px := 2048
 ## Advances on every playback step (even with one frame) so animated
 ## effects (interlace, noise, drift) move while playing.
 var anim_tick := 0
+## Pattern map view (editor only): layer id -> slot index shown as grayscale.
+var pattern_view := {}
 
 
 func _ready() -> void:
@@ -221,6 +223,11 @@ func end_change(action_name: String) -> void:
 		_emit_all()
 	undo.push(action_name, restore.bind(before, sel_before), restore.bind(after, sel_after))
 	dirty = true
+	# Heavy maps (patterns, reaction-diffusion, flow) recompute now that
+	# the change is complete.
+	if active_layer_id >= 0:
+		layer_settings_changed.emit(active_layer_id)
+	view_changed.emit()
 
 
 func in_change() -> bool:

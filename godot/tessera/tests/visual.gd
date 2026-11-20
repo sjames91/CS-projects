@@ -70,3 +70,52 @@ func display() -> void:
 		for k in DisplayStack.PRESETS["Consumer TV"].crt:
 			bg.settings[k] = DisplayStack.PRESETS["Consumer TV"].crt[k])
 	app.set_view("preview_lock", false)
+
+
+func patterns() -> void:
+	var bg: LayerData = app.active_layer()
+	fill_layer(bg, func(c, p): return 17 if p.y < 256 else (9 if p.x < 256 else 13))
+	var sl := Patterns.default_slot()
+	sl.source = Patterns.Src.FRACTAL
+	sl.drives = Patterns.Drive.STYLE | Patterns.Drive.SIZE
+	sl.styles = [0, 1, 0]
+	sl.style_count = 2
+	sl.size = [0.4, 1.1]
+	sl.scale = 6.0
+	var rd := Patterns.default_slot()
+	rd.source = Patterns.Src.REACTION_DIFFUSION
+	rd.iterations = 1500
+	rd.scale = 2.0
+	rd.drives = Patterns.Drive.VISIBILITY
+	rd.visibility = 0.25
+	rd.colors = [9]
+	var hat := Patterns.default_slot()
+	hat.source = Patterns.Src.WORLEY
+	hat.mode = 1
+	hat.drives = Patterns.Drive.PALETTE_SHIFT
+	hat.shift = [-2.0, 1.0]
+	hat.colors = [13]
+	hat.fine = true
+	hat.fine_amount = 0.6
+	app.perform("pat", func(): bg.settings.patterns = [sl, rd, hat])
+
+
+func patterns_map() -> void:
+	await patterns()
+	app.pattern_view[app.active_layer_id] = 1
+	app.view_changed.emit()
+
+
+func turing() -> void:
+	var bg: LayerData = app.active_layer()
+	fill_layer(bg, func(c, p): return 19)
+	var rd := Patterns.default_slot()
+	rd.source = Patterns.Src.REACTION_DIFFUSION
+	rd.feed = 0.0545
+	rd.kill = 0.062
+	rd.iterations = 3000
+	rd.scale = 1.0
+	rd.drives = Patterns.Drive.STYLE | Patterns.Drive.PALETTE_SHIFT
+	rd.styles = [1, 0, 0]
+	rd.shift = [-3.0, 0.0]
+	app.perform("pat", func(): bg.settings.patterns = [rd])

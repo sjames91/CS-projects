@@ -433,3 +433,45 @@ void main() {
 	var data: PackedByteArray = res[0]
 	data.resize(size.x * size.y * 8)
 	return Image.create_from_data(size.x, size.y, false, Image.FORMAT_RGF, data)
+
+
+## Many dispatches of one kernel in a single compute list with a barrier
+## between them (iterative simulations); pushes[i] is dispatch i's constants.
+func run_sequence(key: String, code: String, buffers: Array, pushes: Array, groups: Vector3i, read_back: Array) -> Array:
+	if rd == null:
+		return []
+	var k := _get_kernel(key, code)
+	if k.is_empty():
+		return []
+	var rids: Array[RID] = []
+	var uniforms: Array[RDUniform] = []
+	for i in buffers.size():
+		var data := pad4(buffers[i])
+		var buf := rd.storage_buffer_create(data.size(), data)
+		rids.append(buf)
+		var u := RDUniform.new()
+		u.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		u.binding = i
+		u.add_id(buf)
+		uniforms.append(u)
+	var uset := rd.uniform_set_create(uniforms, k.shader, 0)
+	var cl := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(cl, k.pipeline)
+	rd.compute_list_bind_uniform_set(cl, uset, 0)
+	for pb in pushes:
+		var pc: PackedByteArray = pb.duplicate()
+		if pc.size() % 16 != 0:
+			pc.resize(pc.size() + 16 - pc.size() % 16)
+		rd.compute_list_set_push_constant(cl, pc, pc.size())
+		rd.compute_list_dispatch(cl, groups.x, groups.y, groups.z)
+		rd.compute_list_add_barrier(cl)
+	rd.compute_list_end()
+	rd.submit()
+	rd.sync()
+	var out: Array = []
+	for idx in read_back:
+		out.append(rd.buffer_get_data(rids[idx]))
+	rd.free_rid(uset)
+	for r in rids:
+		rd.free_rid(r)
+	return out
