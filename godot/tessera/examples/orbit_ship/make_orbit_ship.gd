@@ -215,10 +215,12 @@ func build() -> void:
 	# with ordered dither between steps (wide, soft transitions).
 	var space := layer("Space", "square", {})
 	paint(space, func(u: Vector2, _f: int):
-		var t := clampf(1.0 - earth_dist(u) / 44.0, 0.0, 1.0) * 3.0  # 0 far .. 3 at horizon
+		var t := clampf(1.0 - earth_dist(u) / 40.0, 0.0, 1.0) * 3.0  # 0 far .. 3 at horizon
+		# Solid steps with a narrow dithered blend between them.
+		var step := floorf(t)
+		var f := clampf((t - step - 0.5) / 0.28 + 0.5, 0.0, 1.0)
 		var c := Vector2i(floor(u.x), floor(u.y))
-		var b := ph_bayer(c)
-		return 1 + mini(int(floor(t + b)), 3))
+		return 1 + mini(int(step) + (1 if ph_bayer(c) < f else 0), 3))
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
@@ -295,7 +297,7 @@ func build() -> void:
 			return 20
 		return 19)
 
-	var hull_l := layer("Hull", "square", {"rounding_on": true, "rounding": 0.2, "gap_on": true, "gap": 0.045, "grout_color": "#3a3f4a",
+	var hull_l := layer("Hull", "square", {"rounding_on": false, "gap_on": true, "gap": 0.045, "grout_color": "#3a3f4a",
 		"patterns": [_slot({"source": Patterns.Src.WORLEY, "mode": 0, "scale": 3.0, "drives": Patterns.Drive.PALETTE_SHIFT,
 			"shift": [0.0, -1.0], "colors": [7, 8, 9]})]})
 	paint(hull_l, func(u: Vector2, _f: int): return hull_color(u.x - SHIP.x, u.y - SHIP.y))
@@ -358,7 +360,7 @@ func build() -> void:
 	# No vignette: Palette Lock would snap its gradient into a visible ring.
 	# Bloom only on the brightest things (stars, flame core); no chromatic
 	# aberration or lock dither, which scattered off-palette speckle.
-	p.display = {"bloom_on": true, "bloom_threshold": 0.85, "bloom_radius": 6.0, "bloom_intensity": 0.5}
+	p.display = {"bloom_on": true, "bloom_threshold": 0.92, "bloom_radius": 6.0, "bloom_intensity": 0.5}
 	p.palette_lock = {"enabled": true, "dither": false, "strength": 0.0}
 	for l in p.layers:
 		LayerData.normalize_settings(l.settings)
