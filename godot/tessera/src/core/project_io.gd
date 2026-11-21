@@ -4,13 +4,14 @@ extends RefCounted
 ## one small migration function per version step; newer files load with a
 ## warning instead of crashing.
 
-const FORMAT_VERSION := 3
+const FORMAT_VERSION := 4
 const APP_ID := "tessera"
 
 ## Migration steps: MIGRATIONS[n] upgrades a version-n dict to n+1.
 const MIGRATIONS := {
 	1: "_migrate_1_to_2",
 	2: "_migrate_2_to_3",
+	3: "_migrate_3_to_4",
 }
 
 
@@ -84,6 +85,7 @@ static func from_dict(src: Dictionary) -> Dictionary:
 		var meta: Dictionary = ld.duplicate()
 		meta.erase("frames")
 		meta.erase("stroke_frames")
+		meta.erase("legacy_equilateral")
 		# JSON turns ints into floats; normalise the ones that matter.
 		meta["id"] = int(meta.get("id", p.next_layer_id))
 		meta["blend_mode"] = int(meta.get("blend_mode", 0))
@@ -96,6 +98,8 @@ static func from_dict(src: Dictionary) -> Dictionary:
 		for fr in ld.get("stroke_frames", [[]]):
 			sfr.append(fr.map(func(st): return DirStroke.from_json(st)))
 		l.stroke_frames = sfr if not sfr.is_empty() else [[]]
+		if ld.get("legacy_equilateral", false):
+			_convert_equilateral(l, p)
 		var n := p.tiling_for(l).cell_count()
 		l.ensure_frames(1 if l.is_static else p.frame_count, n)
 		p.layers.append(l)
@@ -150,3 +154,49 @@ static func _migrate_2_to_3(d: Dictionary) -> Dictionary:
 			l["stroke_frames"] = [fr]
 			l.erase("strokes")
 	return d
+
+
+## v3 triangles were equilateral (rows cs*sqrt(3)/2 tall), which never lined
+## up with the other tilings. v4 triangles are half a cell tall and line up
+## with the square grid. Old triangle layers are marked here and converted
+## once their cells are loaded (_convert_equilateral).
+static func _migrate_3_to_4(d: Dictionary) -> Dictionary:
+	for l in d.get("layers", []):
+		if str(l.get("tiling_id", "")) == "triangle":
+			l["legacy_equilateral"] = true
+	return d
+
+
+## Each new triangle takes the color of the old equilateral triangle under
+## its center. The old layout: triangle (col,row) centered at x = col*cs/2,
+## rows h = cs*sqrt(3)/2 tall, pointing up when col+row is even.
+static func _convert_equilateral(l: LayerData, p: ProjectData) -> void:
+	var cs := float(p.cell_size)
+	var px := p.canvas_px()
+	var h := cs * sqrt(3.0) * 0.5
+	var old_grid := Vector2i(int(ceil(px.x / (cs * 0.5))) + 2, int(ceil(px.y / h - 0.001)))
+	var t := p.tiling_for(l)
+	for fi in l.frames.size():
+		var old := l.frames[fi]
+		var out := PackedByteArray()
+		out.resize(t.cell_count())
+		for i in out.size():
+			var c := _equilateral_cell(t.cell_center(t.cell_of_index(i)), cs, h)
+			if c.x >= 0 and c.y >= 0 and c.x < old_grid.x and c.y < old_grid.y:
+				var oi := c.y * old_grid.x + c.x
+				if oi < old.size():
+					out[i] = old[oi]
+		l.frames[fi] = out
+
+
+static func _equilateral_cell(pt: Vector2, cs: float, h: float) -> Vector2i:
+	var fx := pt.x / (cs * 0.5)
+	var fy := pt.y / h
+	var s := int(floor(fx))
+	var j := int(floor(fy))
+	var u := fx - s
+	var v := fy - j
+	var right := Vector2i(s + 1, j)
+	var up_right := ((right.x + right.y) & 1) == 0
+	var inside_right := (u + v > 1.0) if up_right else (u > v)
+	return right if inside_right else Vector2i(s, j)

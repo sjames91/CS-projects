@@ -15,13 +15,14 @@ real Vulkan device (see Tests). Known gaps are listed at the end.
 - **Part 1, full editor:** all tools through the Tiling interface, layers,
   shared palette with OKLab matching, PNG palette import (exact / k-means),
   Palette Lock, render toggle, preview panel, undo/redo, versioned
-  save/load with migrations (project format v3).
+  save/load with migrations (project format v4).
 - **Part 2, animation:** per-layer frames, static layers, timeline,
   playback (loop / ping-pong / once), onion skin, per-frame caches;
   animated features (interlace flicker, static noise, flow drift) get
   their own frames when playing or exporting.
 - **Layer Settings (all six sections):**
-  - 1 Tiling: square, hexagon, triangle, diamond, Voronoi, and custom
+  - 1 Tiling: square, hexagon, triangle (half-height, lines up with
+    squares), diamond, Voronoi, and custom
     Shape Editor tilings.
   - 2 Cell style: flat, dot, cross-stitch, LED, Lite-Brite, brush dab,
     mosaic, CRT phosphor, SVG stamp.

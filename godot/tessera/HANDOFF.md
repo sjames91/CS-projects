@@ -49,6 +49,18 @@ after all checks have printed; the interaction test and examples exit cleanly.
    target and was never measured.
 3. Open `examples/orbit_ship/orbit_ship.tessera` to check the project loads.
 
+## Triangles now line up with squares (project format 4)
+
+The Triangle tiling was equilateral (rows cs*sqrt(3)/2 tall), so its rows
+never met the square, hex or diamond grids. It is now right isosceles
+triangles: base one cell wide, half a cell tall, two triangle rows per
+square row. An up triangle sits on a square's bottom edge with its point at
+the square's center; a down triangle hangs from the top edge. Only half
+turns map this lattice onto itself, so rotation steps are 180 degrees.
+Saved files are format 4; format 3 files with triangle layers are converted
+on load (each new triangle takes the color of the old one under its
+center). Tests cover the alignment and the migration.
+
 ## Done: a new ship from the Lower Orbit design doc
 
 Built in `examples/lower_orbit_ship/` (see the header of

@@ -123,6 +123,38 @@ func _ready() -> void:
 	var v2 := {"format_version": 2, "canvas": {"cells": [8, 8], "cell_size": 4}, "palette": [], "layers": [{"name": "d", "kind": "direction", "strokes": [[0, 0, 10, 10]], "frames": []}]}
 	var m2: Dictionary = ProjectIO.from_dict(v2)
 	check(m2.project.layers[0].strokes_at(0).size() == 1 and m2.project.layers[0].strokes_at(0)[0].points[1] == Vector2(10, 10), "v2 -> v3 stroke migration")
+	# Triangles line up with squares: every corner is a square corner or a
+	# square center, an up triangle sits on a square's bottom edge with its
+	# point at the center, and a down triangle hangs from its top edge.
+	var tri := TilingRegistry.create("triangle", 8.0, Vector2(64, 64), {})
+	var off_grid := 0
+	for i in tri.cell_count():
+		for vtx in tri.cell_polygon(tri.cell_of_index(i)):
+			var ix := vtx.x / 4.0
+			var iy := vtx.y / 4.0
+			if absf(ix - round(ix)) > 1e-4 or absf(iy - round(iy)) > 1e-4 or posmod(int(round(ix)), 2) != posmod(int(round(iy)), 2):
+				off_grid += 1
+	check(off_grid == 0, "triangle corners all on square corners or centers (%d off)" % off_grid)
+	check(tri.cell_polygon(Vector2i(1, 1)) == PackedVector2Array([Vector2(4, 4), Vector2(8, 8), Vector2(0, 8)]), "up triangle: square's bottom edge to its center")
+	check(tri.cell_polygon(Vector2i(1, 0)) == PackedVector2Array([Vector2(0, 0), Vector2(8, 0), Vector2(4, 4)]), "down triangle: square's top edge to its center")
+	# v3 equilateral triangle layers are converted on load.
+	var old_cols := int(ceil(128.0 / 4.0)) + 2
+	var old_rows := int(ceil(128.0 / (8.0 * sqrt(3.0) * 0.5) - 0.001))
+	var old_cells := PackedByteArray()
+	old_cells.resize(old_cols * old_rows)
+	old_cells.fill(5)
+	var v3 := {"format_version": 3, "canvas": {"cells": [16, 16], "cell_size": 8}, "palette": ["#ff0000", "#00ff00", "#0000ff", "#ffffff", "#000000"],
+		"layers": [{"name": "t", "tiling_id": "triangle", "is_static": true,
+			"frames": [{"zstd": Marshalls.raw_to_base64(old_cells.compress(FileAccess.COMPRESSION_ZSTD)), "size": old_cells.size()}]}]}
+	var mig4: Dictionary = ProjectIO.from_dict(v3)
+	var tl: LayerData = mig4.project.layers[0]
+	var tt: Tiling = mig4.project.tiling_for(tl)
+	var unfilled := 0
+	for i in tt.cell_count():
+		var ctr := tt.cell_center(tt.cell_of_index(i))
+		if ctr.x > 0 and ctr.x < 128 and ctr.y > 0 and ctr.y < 128 and tl.frames[0][i] != 5:
+			unfilled += 1
+	check(tl.frames[0].size() == tt.cell_count() and unfilled == 0, "v3 -> v4 equilateral triangles converted (%d cells lost)" % unfilled)
 	# SVG parsing: relative commands, H/V, quadratic, smooth cubic, arc, close.
 	var paths := Svg.parse_d("m10 10 h20 v20 q-10 10 -20 0 z M100 100 C110 90 130 90 140 100 S170 110 180 100 A20 20 0 0 1 220 100")
 	check(paths.size() == 2 and paths[0].closed and not paths[1].closed, "svg path subpaths / close (%d)" % paths.size())
